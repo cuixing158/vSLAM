@@ -27,7 +27,7 @@ while ~isDone(videoFReader)
 
 
     t3 = tic;
-    points2 = detectFastFeatures(videoFrame);
+    points2 = detectKAZEFeatures(videoFrame);
     t4 = toc(t3);
     % Select a subset of features, uniformly distributed throughout the image
 %     points2 = selectUniform(points2, numPoints, size(videoFrame, 1:2));
