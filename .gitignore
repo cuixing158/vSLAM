@@ -30,7 +30,7 @@
 !Makefile
 
 # 以下根据自己项目工程修改
-
+!./images/*
 !*.prj
 !*.txt
 !*.cgt
