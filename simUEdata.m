@@ -1,7 +1,9 @@
+%% 用于曾总UE里面仿真场景数据的解析
+
 %% 自定义数据
 simoutFile = "\\yunpan02\豪恩汽电\豪恩汽电研发中心\临时文件夹\simout\simout.mat";
-dstRoot = "\\yunpan02\豪恩汽电\豪恩汽电研发中心\临时文件夹\simout\parkingLotImages";
-% dstRoot = "./imgsUE";
+% dstRoot = "\\yunpan02\豪恩汽电\豪恩汽电研发中心\临时文件夹\simout\parkingLotImages";
+dstRoot = "./imgsUE";
 xLim = [-18,25];
 yLim = [10,15];
 zLim = [-0.5,2.5];
@@ -35,13 +37,14 @@ view(MapPointsPlot.Axes, [0 0 1]);
 %% main loop
 numId = 1;
 arrds.reset();
+tic;
 while hasdata(arrds)
     currData = read(arrds);
     currImg = squeeze(currData.image);
     currCamLocation = currData.locationCamera;
     currVehLocation = currData.locationVehicle;
     imgName = sprintf("%04d.png",numId);
-    imwrite(currImg,fullfile(dstRoot,imgName));
+%     imwrite(currImg,fullfile(dstRoot,imgName));
 
     % update plot
     imgObj.CData = currImg;
@@ -50,6 +53,7 @@ while hasdata(arrds)
     drawnow limitrate
     numId = numId+1;
 end
+toc
 % Update the camera trajectory
 set(gTrajectory, 'XData', refPath(:,1), 'YData', ...
     refPath(:,2), 'ZData', ones(size(refPath(:,1))));
