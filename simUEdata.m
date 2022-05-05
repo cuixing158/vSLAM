@@ -1,9 +1,9 @@
 %% 用于曾总UE里面仿真场景数据的解析
 
 %% 自定义数据
-simoutFile = "\\yunpan02\豪恩汽电\豪恩汽电研发中心\临时文件夹\simout\simout.mat";
+simoutFile = "\\yunpan02\豪恩汽电\豪恩汽电研发中心\临时文件夹\simout\20220426\simout20220505.mat";
 % dstRoot = "\\yunpan02\豪恩汽电\豪恩汽电研发中心\临时文件夹\simout\parkingLotImages";
-dstRoot = "./imgsUE";
+dstRoot = "E:\AllDataAndModels\underParkingLotImages20220505";
 xLim = [-18,25];
 yLim = [10,15];
 zLim = [-0.5,2.5];
@@ -44,7 +44,7 @@ while hasdata(arrds)
     currCamLocation = currData.locationCamera;
     currVehLocation = currData.locationVehicle;
     imgName = sprintf("%04d.png",numId);
-%     imwrite(currImg,fullfile(dstRoot,imgName));
+    imwrite(currImg,fullfile(dstRoot,imgName));
 
     % update plot
     imgObj.CData = currImg;
