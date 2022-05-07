@@ -21,3 +21,7 @@
 
 标定误差：<br>
 ![img](images/calib.jpg)
+
+- 2022.5.6 
+使用orb特征检测，经由鲁棒估计，内点筛选等基本步骤后，可以得到较为准确的匹配效果，见下图：<br>
+![orb-match](images/orb_match.jpg)

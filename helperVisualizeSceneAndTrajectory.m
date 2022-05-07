@@ -11,7 +11,7 @@ classdef helperVisualizeSceneAndTrajectory < handle
         
         YLim = [-0.5 0.5]
         
-        ZLim = [-0.5 2.5]
+        ZLim = [-0.5 5]
 
         Axes
     end
@@ -53,7 +53,7 @@ classdef helperVisualizeSceneAndTrajectory < handle
             % Plot the current cameras
             obj.CameraPlot = plotCamera(currPose, 'Parent', obj.Axes, 'Size', 0.05);
             view(obj.Axes, [0 -1 0]);
-            camroll(obj.Axes, 90);
+%             camroll(obj.Axes, 90);
         end
         
         function updatePlot(obj, vSetKeyFrames, mapPoints, varargin)
@@ -201,9 +201,6 @@ classdef helperVisualizeSceneAndTrajectory < handle
             obj.EstimatedTrajectory.XData =  obj.EstimatedTrajectory.XData * scale;
             obj.EstimatedTrajectory.YData =  obj.EstimatedTrajectory.YData * scale;
             obj.EstimatedTrajectory.ZData =  obj.EstimatedTrajectory.ZData * scale;
-            obj.OptimizedTrajectory.XData =  obj.OptimizedTrajectory.XData * scale;
-            obj.OptimizedTrajectory.YData =  obj.OptimizedTrajectory.YData * scale;
-            obj.OptimizedTrajectory.ZData =  obj.OptimizedTrajectory.ZData * scale;
         end
     end
 end

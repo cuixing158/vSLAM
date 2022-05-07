@@ -49,6 +49,9 @@ end
 
 % Project the map into the frame and search for more map point correspondences
 newMapPointIdx = setdiff(localPointsIndices, mapPointIdx, 'stable');
+if isempty(newMapPointIdx)
+    newMapPointIdx = mapPointIdx;
+end
 localFeatures  = getFeatures(directionAndDepth, vSetKeyFrames.Views, newMapPointIdx); 
 [projectedPoints, inlierIndex, predictedScales, viewAngles] = removeOutlierMapPoints(mapPoints, ...
     directionAndDepth, currPose, intrinsics, newMapPointIdx, scaleFactor, numLevels);
@@ -144,7 +147,7 @@ for i = 1:numel(mapPointIdx)
     
     if isempty(count)
         count = [viewId, size(viewsFeatures{viewId},1)];
-    elseif ~any(count(:,1) == viewId)
+    elseif all(count(:,1) ~= viewId)
         count = [count; viewId, size(viewsFeatures{viewId},1)];
     end
     
@@ -158,6 +161,10 @@ for i = 1:numel(mapPointIdx)
     allIndices(i) = majorFeatureindices(index3d) + offset;
 end
 
+if isempty(count)
+    features = [];
+    return;
+end
 uIds = count(:,1);
 
 % Concatenating features and indexing once is faster than accessing via a for loop

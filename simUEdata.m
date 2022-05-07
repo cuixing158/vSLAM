@@ -44,7 +44,7 @@ while hasdata(arrds)
     currCamLocation = currData.locationCamera;
     currVehLocation = currData.locationVehicle;
     imgName = sprintf("%04d.png",numId);
-    imwrite(currImg,fullfile(dstRoot,imgName));
+%     imwrite(currImg,fullfile(dstRoot,imgName));
 
     % update plot
     imgObj.CData = currImg;

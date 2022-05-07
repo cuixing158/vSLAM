@@ -48,22 +48,13 @@ while ~isMapInitialized && currFrameIdx < numel(imds.Files)
     preMatchedPoints  = prePoints(indexPairs(:,1),:);
     currMatchedPoints = currPoints(indexPairs(:,2),:);
     
-    % Compute homography and evaluate reconstruction
-    [tformH, scoreH, inliersIdxH] = helperComputeHomography(preMatchedPoints, currMatchedPoints);
-
     % Compute fundamental matrix and evaluate reconstruction
-    [tformF, scoreF, inliersIdxF] = helperComputeFundamentalMatrix(preMatchedPoints, currMatchedPoints);
-    
+    [tformF, ~, inliersIdxF] = helperComputeFundamentalMatrix(preMatchedPoints, currMatchedPoints);
+
     % Select the model based on a heuristic
-    ratio = scoreH/(scoreH + scoreF);
-    ratioThreshold = 0.45;
-    if ratio > ratioThreshold
-        inlierTformIdx = inliersIdxH;
-        tform          = tformH;
-    else
-        inlierTformIdx = inliersIdxF;
-        tform          = tformF;
-    end
+    inlierTformIdx = inliersIdxF;
+    tform          = tformF;
+
 
     % Computes the camera location up to scale. Use half of the 
     % points to reduce computation
@@ -153,17 +144,6 @@ mapPlot       = helperVisualizeSceneAndTrajectory(vSetKeyFrames, mapPointSet);
 % Show legend
 showLegend(mapPlot);
 
-%% Initialize Place Recognition Database
-
-% Load the bag of features data created offline
-bofData         = load('bagOfFeaturesDataSLAM.mat');
-
-% Initialize the place recognition database
-loopDatabase    = invertedImageIndex(bofData.bof, "SaveFeatureLocations", false);
-
-% Add features of the first two key frames to the database
-addImageFeatures(loopDatabase, preFeatures, preViewId);
-addImageFeatures(loopDatabase, currFeatures, currViewId);
 
 %% Tracking
 % The tracking process is performed using every frame and determines when to 
@@ -251,32 +231,7 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
     % Visualize 3D world points and camera trajectory
     updatePlot(mapPlot, vSetKeyFrames, mapPointSet);
     
-%% Loop Closure
     % Initialize the loop closure database
-
-    % Check loop closure after some key frames have been created    
-    if currKeyFrameId > 100
-        
-        % Detect possible loop closure key frame candidates
-        loopEdgeNumMatches = 40;
-        [isDetected, validLoopCandidates] = helperCheckLoopClosure(vSetKeyFrames, currKeyFrameId, ...
-            loopDatabase, currI, loopEdgeNumMatches);
-        
-        if isDetected 
-            % Add loop closure connections
-            isStereo = false;
-            [mapPointSet, vSetKeyFrames, loopClosureEdge] = helperAddLoopConnections(...
-                mapPointSet, vSetKeyFrames, validLoopCandidates, ...
-                currKeyFrameId, currFeatures, currPoints, loopEdgeNumMatches, isStereo);
-            isLoopClosed = ~isempty(loopClosureEdge);
-        end
-    end
-    
-    % If no loop closure is detected, add current features into the database
-    if ~isLoopClosed
-        addImageFeatures(loopDatabase,  currFeatures, currKeyFrameId);
-    end
-    
     % Update IDs and indices
     lastKeyFrameId  = currKeyFrameId;
     lastKeyFrameIdx = currFrameIdx;
@@ -284,37 +239,8 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
     currFrameIdx  = currFrameIdx + 1;
 end % End of main loop
 
-if ~isLoopClosed
-    disp('Loop closure cannot be found');
-    optimizedPoses = [];
-    return
-end
-
-% Create a similarity pose graph from the key frames set
-G = createPoseGraph(vSetKeyFrames);
-
-% Remove weak edges and keep loop closure edges
-EG = rmedge(G, find(G.Edges.Weight < minNumMatches & ...
-    ~ismember(G.Edges.EndNodes, loopClosureEdge, 'rows')));
-
-% Optimize the similarity pose graph
-optimG = optimizePoseGraph(EG, 'g2o-levenberg-marquardt');
-optimizedPoses = optimG.Nodes(:, 1:2);
-
-% Update the view poses
-vSetKeyFramesOptim = updateView(vSetKeyFrames, optimizedPoses);
-
-% Update map points after optimizing the poses
-mapPointSet = helperUpdateGlobalMap(mapPointSet, directionAndDepth, ...
-    vSetKeyFrames, vSetKeyFramesOptim, optimG.Nodes.Scale);
-
-updatePlot(mapPlot, vSetKeyFrames, mapPointSet);
-
-% Plot the optimized camera trajectory
-plotOptimizedTrajectory(mapPlot, optimizedPoses)
-
-% Update legend
-showLegend(mapPlot);
+    disp('Loop closure not used');
+    optimizedPoses = vSetKeyFrames.Views;
 end
 
 %--------------------------------------------------------------------------
@@ -344,32 +270,6 @@ points = selectUniform(points, numPoints, size(Igray, 1:2));
 [features, validPoints] = extractFeatures(Igray, points);
 end
 
-%--------------------------------------------------------------------------
-function [H, score, inliersIndex] = helperComputeHomography(matchedPoints1, matchedPoints2)
-%helperComputeHomography compute homography and evaluate reconstruction
-
-[H, inliersLogicalIndex] = estimateGeometricTransform2D( ...
-    matchedPoints1, matchedPoints2, 'similarity', ...
-    'MaxNumTrials', 5e3, 'MaxDistance', 4);
-
-inlierPoints1 = matchedPoints1(inliersLogicalIndex);
-inlierPoints2 = matchedPoints2(inliersLogicalIndex);
-
-inliersIndex  = find(inliersLogicalIndex);
-
-locations1 = inlierPoints1.Location;
-locations2 = inlierPoints2.Location;
-
-xy1In2     = transformPointsForward(H, locations1);
-xy2In1     = transformPointsInverse(H, locations2);
-error1in2  = sum((locations2 - xy1In2).^2, 2);
-error2in1  = sum((locations1 - xy2In1).^2, 2);
-
-outlierThreshold = 6;
-
-score = sum(max(outlierThreshold-error1in2, 0)) + ...
-    sum(max(outlierThreshold-error2in1, 0));
-end
 
 %--------------------------------------------------------------------------
 function [F, score, inliersIndex] = helperComputeFundamentalMatrix(matchedPoints1, matchedPoints2)
