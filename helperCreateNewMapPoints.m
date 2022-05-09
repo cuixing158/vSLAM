@@ -144,7 +144,7 @@ t2 = pose2.Translation';
 R12 = R1'*R2;
 t12 = R1'*(t2-t1);
 
-% Skew symmetric matrix
+% Skew symmetric matrix，即反对称矩阵，F推导参考：https://blog.csdn.net/rs_lys/article/details/105427224
 t12x = [0, -t12(3), t12(2)
     t12(3), 0, -t12(1)
     -t12(2) t12(1), 0];

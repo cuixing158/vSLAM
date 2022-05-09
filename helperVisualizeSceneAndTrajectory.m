@@ -81,7 +81,7 @@ classdef helperVisualizeSceneAndTrajectory < handle
         end
         
         function plotOptimizedTrajectory(obj, poses)
-            
+            % poses是传入的优化后的姿态，这个函数应当摒弃掉，因为我们没有回环检测优化姿态
             % Delete the camera plot
             delete(obj.CameraPlot);
             
@@ -92,6 +92,7 @@ classdef helperVisualizeSceneAndTrajectory < handle
         end
         
         function scaledLocations = plotActualTrajectory(obj, gTruth, optimizedPoses)
+            % scaledLocatiions为优化后的位置，应当摒弃掉
             estimatedCameraLoc = vertcat(optimizedPoses.AbsolutePose.Translation);
             actualCameraLoc    = vertcat(gTruth.Translation);
             scale = median(vecnorm(actualCameraLoc(2:5:end,:) - actualCameraLoc(1,:), 2, 2)./ ...
@@ -151,16 +152,16 @@ classdef helperVisualizeSceneAndTrajectory < handle
             obj.EstimatedTrajectory.YData = estimatedTrajY;
             obj.EstimatedTrajectory.ZData = estimatedTrajZ;
             
-            [optimizedTrajX, optimizedTrajY, optimizedTrajZ] = ...
-                transformPointsForward(tform, ...
-                obj.OptimizedTrajectory.XData, ...
-                obj.OptimizedTrajectory.YData, ...
-                obj.OptimizedTrajectory.ZData);
-            obj.OptimizedTrajectory.XData = optimizedTrajX;
-            obj.OptimizedTrajectory.YData = optimizedTrajY;
-            obj.OptimizedTrajectory.ZData = optimizedTrajZ;
-            
-            scaledLocations = [optimizedTrajX.', optimizedTrajY.', optimizedTrajZ.'];
+%             [optimizedTrajX, optimizedTrajY, optimizedTrajZ] = ...
+%                 transformPointsForward(tform, ...
+%                 obj.OptimizedTrajectory.XData, ...
+%                 obj.OptimizedTrajectory.YData, ...
+%                 obj.OptimizedTrajectory.ZData);
+%             obj.OptimizedTrajectory.XData = optimizedTrajX;
+%             obj.OptimizedTrajectory.YData = optimizedTrajY;
+%             obj.OptimizedTrajectory.ZData = optimizedTrajZ;
+%             
+%             scaledLocations = [optimizedTrajX.', optimizedTrajY.', optimizedTrajZ.'];
         end
         
         function [xyzPoints, currPose, trajectory]  = retrievePlottedData(obj, vSetKeyFrames, mapPoints)

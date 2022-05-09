@@ -238,7 +238,10 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
     addedFramesIdx  = [addedFramesIdx; currFrameIdx]; %#ok<AGROW>
     currFrameIdx  = currFrameIdx + 1;
 end % End of main loop
-
+    % 绘制ground truth真实路径轨迹
+    actualCameraLoc    = vertcat(gTruth.Translation);
+    plot3(obj.Axes, actualCameraLoc(:,1), actualCameraLoc(:,2), actualCameraLoc(:,3), ...
+                'g','LineWidth',2, 'DisplayName', 'Actual trajectory');
     disp('Loop closure not used');
     optimizedPoses = vSetKeyFrames.Views;
 end
@@ -338,7 +341,7 @@ outlierIdx    = setdiff(newPointIdx, mapPointsIdx);
 if ~isempty(outlierIdx)
     mapPointSet   = removeWorldPoints(mapPointSet, outlierIdx);
     directionAndDepth = remove(directionAndDepth, outlierIdx);
-    mapPointsIdx  = mapPointsIdx - arrayfun(@(x) nnz(x>outlierIdx), mapPointsIdx);
+    mapPointsIdx  = mapPointsIdx - arrayfun(@(x) nnz(x>outlierIdx), mapPointsIdx);% 2022.5.9不是很理解
 end
 end
 

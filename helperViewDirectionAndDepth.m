@@ -153,6 +153,7 @@ function index = computeDistinctiveDescriptors(features)
 if size(features, 1) < 3
     index       = size(features, 1);
 else
+    % 可以使用此语句scores = pdist2(features,features,'hamming')代替下面
     scores      = helperHammingDistance(features, features);
     [~, index]  = min(sum(scores, 2));
 end
