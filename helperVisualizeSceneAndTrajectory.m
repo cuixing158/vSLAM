@@ -122,6 +122,7 @@ classdef helperVisualizeSceneAndTrajectory < handle
             % Update the map points and camera trajectory based on the
             % initial pose of the sensor
             
+            % imageToCamera转换为eul角度为[0,-pi/2,pi/2]
             imageToCamera = rigid3d([0 -1 0 0; 0 0 -1 0; 1 0 0 0; 0 0 0 1]);
             tform = rigid3d(imageToCamera.T * initialPose.T);
             
