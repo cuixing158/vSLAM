@@ -1,4 +1,4 @@
-function [mapPlot, optimizedPoses, addedFramesIdx] = helperVisualSLAM(imds, intrinsics)
+function [mapPlot,optimizedPoses, addedFramesIdx] = helperVisualSLAM(imds, intrinsics)
 %helperVisualSLAM Evaluate the performance of a visual SLAM algorithm
 %   The implementation details of the visual SLAM algorithm can be found in
 %   the Monocular Visual Simultaneous Localization and Mapping example.
@@ -238,11 +238,6 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
     addedFramesIdx  = [addedFramesIdx; currFrameIdx]; %#ok<AGROW>
     currFrameIdx  = currFrameIdx + 1;
 end % End of main loop
-    % 绘制ground truth真实路径轨迹
-    actualCameraLoc    = vertcat(gTruth.Translation);
-    plot3(obj.Axes, actualCameraLoc(:,1), actualCameraLoc(:,2), actualCameraLoc(:,3), ...
-                'g','LineWidth',2, 'DisplayName', 'Actual trajectory');
-    disp('Loop closure not used');
     optimizedPoses = vSetKeyFrames.Views;
 end
 

@@ -16,10 +16,14 @@ imageSize      = [1080, 1920]; % in pixels [mrows, ncols]
 % imageSize      = [370, 1230]; % in pixels [mrows, ncols]
 intrinsics     = cameraIntrinsics(focalLength, principalPoint, imageSize);
 
-[mapPlot, optimizedPoses, addedFramesIdx] = helperVisualSLAM(imds, intrinsics); 
+[mapPlot, optimizedPoses,addedFramesIdx] = helperVisualSLAM(imds, intrinsics); 
 
 % Plot the camera ground truth trajectory
-
+% 绘制ground truth真实路径轨迹
+    actualCameraLoc    = vertcat(gTruth.Translation);
+    plot3(actualCameraLoc(:,1), actualCameraLoc(:,2), actualCameraLoc(:,3), ...
+                'g','LineWidth',2, 'DisplayName', 'Actual trajectory');
+    disp('Loop closure not used');
 scaledTrajectory = plotActualTrajectory(mapPlot, gTruth(addedFramesIdx), optimizedPoses);
 
 % Show legend

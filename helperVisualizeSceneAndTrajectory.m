@@ -77,7 +77,7 @@ classdef helperVisualizeSceneAndTrajectory < handle
             obj.CameraPlot.AbsolutePose = currPose.AbsolutePose;
             obj.CameraPlot.Label        = num2str(currPose.ViewId);
             
-            drawnow limitrate
+%             drawnow limitrate
         end
         
         function plotOptimizedTrajectory(obj, poses)
@@ -101,7 +101,7 @@ classdef helperVisualizeSceneAndTrajectory < handle
             % Update the plot based on the ground truth
             updatePlotScale(obj, scale);
             
-            % Transform to the global coordinate system
+            % Transform to the global coordinate system,初始原点对齐，尺度上步已经完成
             scaledLocations = transformCoodinates(obj, gTruth(1));
             
             % Plot the ground truth

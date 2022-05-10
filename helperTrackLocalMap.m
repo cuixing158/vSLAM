@@ -186,7 +186,7 @@ if isempty(projectedPoints)
 end
 
 % 2) Parallax less than 60 degrees
-cameraNormVector = [0 0 1] * pose.Rotation;
+cameraNormVector = [0 0 1] * pose.Rotation';% 相机姿态的单位法向量
 cameraToPoints   = xyzPoints - pose.Translation;
 viewDirection    = directionAndDepth.ViewDirection(localPointsIndices, :);
 validByView      = sum(viewDirection.*cameraToPoints, 2) > ...
