@@ -124,7 +124,7 @@ classdef helperVisualizeSceneAndTrajectory < handle
             % initial pose of the sensor
             
             % imageToCamera转换为eul角度为[0,-pi/2,pi/2]
-            imageToCamera = rigid3d([0 -1 0 0; 0 0 -1 0; 1 0 0 0; 0 0 0 1]);
+            imageToCamera = rigid3d([0 -1 0 0; 0 0 -1 0; 1 0 0 0; 0 0 0 1]);% 推测旋转矩阵为绕Z轴-pi/2角度
             tform = rigid3d(imageToCamera.T * initialPose.T);
             
             preLim = [obj.Axes.XLim.', obj.Axes.YLim.', obj.Axes.ZLim.'];
