@@ -30,3 +30,7 @@
 根据曾总的图片和ground Truth,在初步跑通的整个流程下的估计地图如下：<br>
 ![orb-slam2](images/orb-slam2.jpg)<br>
 
+
+**疑惑点**
+1. 如何理解各个map point的景深？即景深范围与orb尺度的关系？
+
