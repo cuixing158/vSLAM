@@ -24,4 +24,8 @@
 
 - 2022.5.6 
 使用orb特征检测，经由鲁棒估计，内点筛选等基本步骤后，可以得到较为准确的匹配效果，见下图：<br>
-![orb-match](images/orb_match.jpg)
+![orb-match](images/orb_match.jpg)<br>
+- 2022.5.13
+单目slam是无法得到实际物理尺寸的，[要通过诸于GPS或者标定物等实际物理尺寸计算出scale factor推算整个map的尺寸。](https://robotics.stackexchange.com/questions/22192/scale-factor-of-monocular-slam-simultaneous-localization-and-mapping)
+
+

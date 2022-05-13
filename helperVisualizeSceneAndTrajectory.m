@@ -102,6 +102,7 @@ classdef helperVisualizeSceneAndTrajectory < handle
             updatePlotScale(obj, scale);
             
             % Transform to the global coordinate system,初始原点对齐，尺度上步已经完成
+            gTruth(1) = rigid3d(eye(3),gTruth(1).Translation);% 真值不考虑旋转
             scaledLocations = transformCoodinates(obj, gTruth(1));
             
             % Plot the ground truth
@@ -124,9 +125,23 @@ classdef helperVisualizeSceneAndTrajectory < handle
             % initial pose of the sensor
             
             % imageToCamera转换为eul角度为[0,-pi/2,pi/2]
-            imageToCamera = rigid3d([0 -1 0 0; 0 0 -1 0; 1 0 0 0; 0 0 0 1]);% 推测旋转矩阵为绕Z轴-pi/2角度
-            tform = rigid3d(imageToCamera.T * initialPose.T);
-            
+            %             imageToCamera = rigid3d([0 -1 0 0; 0 0 -1 0; 1 0 0 0; 0 0 0 1]);% 推测旋转矩阵为绕Z轴-pi/2角度
+            angle = -90;
+            rx = [1,0,0;
+                0,cosd(angle),sind(angle);
+                0,-sind(angle),cosd(angle)];
+            tx = [0,0,0];
+            rz = [cosd(-angle),sind(-angle),0;
+                -sind(-angle),cosd(-angle),0;
+                0,0,1];
+            tz = [0,0,0];
+            r = rx*rz;% first x,then z
+            t = tx+tz;
+            imageToCamera = rigid3d(r,t);% 点绕x轴旋转-90°，即XOZ平面转换为XOY平面的转换,再绕Z轴旋转-90°，得YOX
+%             origin2init = invert(initialPose);
+            tform = rigid3d(imageToCamera.T * initialPose.T);% 点云转换到gt的变换过程,先转换imageToCamera，这个时候已经是基于initialPose下的坐标，再转换initalPose到世界坐标系，注意顺序 
+            view(obj.Axes,[0,0,1])
+
             preLim = [obj.Axes.XLim.', obj.Axes.YLim.', obj.Axes.ZLim.'];
             currLim = transformPointsForward(tform, preLim); 
             obj.Axes.XLim = [min(currLim(:,1)), max(currLim(:,1))];
@@ -151,17 +166,18 @@ classdef helperVisualizeSceneAndTrajectory < handle
             obj.EstimatedTrajectory.XData = estimatedTrajX;
             obj.EstimatedTrajectory.YData = estimatedTrajY;
             obj.EstimatedTrajectory.ZData = estimatedTrajZ;
-            
-%             [optimizedTrajX, optimizedTrajY, optimizedTrajZ] = ...
-%                 transformPointsForward(tform, ...
-%                 obj.OptimizedTrajectory.XData, ...
-%                 obj.OptimizedTrajectory.YData, ...
-%                 obj.OptimizedTrajectory.ZData);
-%             obj.OptimizedTrajectory.XData = optimizedTrajX;
-%             obj.OptimizedTrajectory.YData = optimizedTrajY;
-%             obj.OptimizedTrajectory.ZData = optimizedTrajZ;
-%             
-%             scaledLocations = [optimizedTrajX.', optimizedTrajY.', optimizedTrajZ.'];
+
+            %             [optimizedTrajX, optimizedTrajY, optimizedTrajZ] = ...
+            %                 transformPointsForward(tform, ...
+            %                 obj.OptimizedTrajectory.XData, ...
+            %                 obj.OptimizedTrajectory.YData, ...
+            %                 obj.OptimizedTrajectory.ZData);
+            %             obj.OptimizedTrajectory.XData = optimizedTrajX;
+            %             obj.OptimizedTrajectory.YData = optimizedTrajY;
+            %             obj.OptimizedTrajectory.ZData = optimizedTrajZ;
+            %
+            %             scaledLocations = [optimizedTrajX.', optimizedTrajY.', optimizedTrajZ.'];
+            scaledLocations = [estimatedTrajX',estimatedTrajY',estimatedTrajZ'];
         end
         
         function [xyzPoints, currPose, trajectory]  = retrievePlottedData(obj, vSetKeyFrames, mapPoints)

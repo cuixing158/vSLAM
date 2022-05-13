@@ -8,7 +8,7 @@ pts = [20,30,40; % 世界坐标系下的测试点
     10,10,10];
 tformR = absolutePose.Rotation*carrierPose.Rotation';
 tformT = (absolutePose.Translation-carrierPose.Translation)*carrierPose.Rotation';
-transfom = rigid3d(tformR,tformT);
+transfom = rigid3d(tformR,tformT);% 也可以使用invert函数验证其反向变换
 destPts = transformPointsForward(transfom,pts) % 载体坐标系下的坐标
 
 

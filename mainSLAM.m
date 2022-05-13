@@ -20,10 +20,10 @@ intrinsics     = cameraIntrinsics(focalLength, principalPoint, imageSize);
 
 % Plot the camera ground truth trajectory
 % 绘制ground truth真实路径轨迹
-    actualCameraLoc    = vertcat(gTruth.Translation);
-    plot3(actualCameraLoc(:,1), actualCameraLoc(:,2), actualCameraLoc(:,3), ...
-                'g','LineWidth',2, 'DisplayName', 'Actual trajectory');
-    disp('Loop closure not used');
+%     actualCameraLoc    = vertcat(gTruth.Translation);
+%     plot3(actualCameraLoc(:,1), actualCameraLoc(:,2), actualCameraLoc(:,3), ...
+%                 'g','LineWidth',2, 'DisplayName', 'Actual trajectory');
+%     disp('Loop closure not used');
 scaledTrajectory = plotActualTrajectory(mapPlot, gTruth(addedFramesIdx), optimizedPoses);
 
 % Show legend
@@ -37,7 +37,7 @@ for i = 1:height(gTruthData)
     gTruth(i).Translation = [currLocations(1:2),0];
     % Ignore the roll and the pitch rotations since the ground is flat
     yaw = currLocations(3);
-    gTruth(i).Rotation = [cos(yaw), sin(yaw), 0; ...
+    gTruth(i).Rotation = [cos(yaw), sin(yaw), 0; ... % 变换使用newPt = oldPt*rotation;
         -sin(yaw), cos(yaw), 0; ...
         0, 0, 1];
 end
