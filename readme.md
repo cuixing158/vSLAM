@@ -27,5 +27,6 @@
 ![orb-match](images/orb_match.jpg)<br>
 - 2022.5.13
 单目slam是无法得到实际物理尺寸的，[要通过诸于GPS或者标定物等实际物理尺寸计算出scale factor推算整个map的尺寸。](https://robotics.stackexchange.com/questions/22192/scale-factor-of-monocular-slam-simultaneous-localization-and-mapping)
-
+根据曾总的图片和ground Truth,在初步跑通的整个流程下的估计地图如下：<br>
+![orb-slam2](images/orb-slam2.jpg)<br>
 
