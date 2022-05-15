@@ -331,12 +331,13 @@ end
 %--------------------------------------------------------------------------
 function [mapPointSet, directionAndDepth, mapPointsIdx] = helperCullRecentMapPoints(...
         mapPointSet, directionAndDepth, mapPointsIdx, newPointIdx)
-%helperCullRecentMapPoints cull recently added map points
+%helperCullRecentMapPoints cull recently added map
+%points；此函数功能应该是剔除非最近添加的map points之外的点，官方注释应当调整
 outlierIdx    = setdiff(newPointIdx, mapPointsIdx);
 if ~isempty(outlierIdx)
     mapPointSet   = removeWorldPoints(mapPointSet, outlierIdx);
     directionAndDepth = remove(directionAndDepth, outlierIdx);
-    mapPointsIdx  = mapPointsIdx - arrayfun(@(x) nnz(x>outlierIdx), mapPointsIdx);% 2022.5.9不是很理解
+    mapPointsIdx  = mapPointsIdx - arrayfun(@(x) nnz(x>outlierIdx), mapPointsIdx);% 2022.5.9不是很理解;2022.5.15,mapPointsIdx就是索引重新从1开始排序,本质就是序号平行移动
 end
 end
 

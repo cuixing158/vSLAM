@@ -22,7 +22,7 @@ for i = 1:numel(keyFramesIndices)
     
     prePose   = viewsAbsPoses(localKeyFrameId);
     relPose = rigid3d(cameraPose.Rotation*prePose.Rotation', ...
-        (cameraPose.Translation-prePose.Translation)*prePose.Rotation');
+        (cameraPose.Translation-prePose.Translation)*prePose.Rotation');% 这里相对平移矩阵有问题？需发matlab answer进行探讨
     
     if numel(ia) > 10
         vSetKeyFrames = addConnection(vSetKeyFrames, localKeyFrameId, viewId, relPose, ...
