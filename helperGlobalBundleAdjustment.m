@@ -22,7 +22,7 @@ tracks = tracks(validIdx);
 
 % Scale the map and the camera pose using the median depth of map points
 medianDepth   = median(vecnorm(refinedPoints.'));
-refinedPoints = refinedPoints / medianDepth;
+refinedPoints = refinedPoints / medianDepth;% 调整后的重建点景深距离在1m左右摆动
 
 if nargin > 4
     relPose = varargin{1};
