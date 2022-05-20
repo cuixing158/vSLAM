@@ -180,7 +180,8 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
         vSetKeyFrames.Views, currFeatures, currPoints, lastKeyFrameId, ...
         intrinsics, scaleFactor);
     
-    % Track the local map and check if the current frame is a key frame
+    % Track the local map and check if the current frame is a key
+    % frame，跟踪局部地图以获取更多的对应点
     numSkipFrames     = 15;
     numPointsKeyFrame = 120;
     [localKeyFrameIds, currPose, mapPointsIdx, featureIdx, isKeyFrame] = ...
