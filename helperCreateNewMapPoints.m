@@ -82,7 +82,7 @@ for i = 1:numel(KcIDs)
     distToLine = abs(sum(epiLine.* [matchedPoints1, ones(size(matchedPoints1,1), 1)], 2))./...
         sqrt(sum(epiLine(:,1:2).^2, 2));
     isValid = distToLine < 2*uScales2(indexPairs(:,2)) & ...
-        distToEpipole > 10*uScales2(indexPairs(:,2));
+        distToEpipole > 10*uScales2(indexPairs(:,2));% 这个约束不动，为啥跟尺度牵扯上关系？比例因子也搞不懂
     
     indexPairs = indexPairs(isValid, :);
     matchedPoints1 = matchedPoints1(isValid, :);
@@ -179,7 +179,7 @@ function isLarge = isLargeParalalx(points1, points2, pose1, pose2, intrinsics, m
 
 % Parallax check
 K = intrinsics.IntrinsicMatrix;
-ray1 = [points1, ones(size(points1(:,1)))]/K *pose1.Rotation;
+ray1 = [points1, ones(size(points1(:,1)))]/K *pose1.Rotation;% 通用常规方程为p = K*x，在matlab中正好相反，即x*K=p,其中p为像素坐标，x为相机物理坐标
 ray2 = [points2, ones(size(points1(:,2)))]/K *pose2.Rotation;
 
 cosParallax = sum(ray1 .* ray2, 2) ./(vecnorm(ray1, 2, 2) .* vecnorm(ray2, 2, 2));

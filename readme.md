@@ -7,9 +7,7 @@
 1. 由于我们场景停车场无闭环检测，仅单目摄像头，这样对3D重建有一定的局限性，更多尝试Sturct from motion topic，借鉴vSLAM方法，重点特征点检测/匹配/鲁棒估计。这里重要文献是“2016_struct from motion revisited.pdf”，开源库/软件是https://demuc.de/colmap/ 
 
 - 相机内参
- 对桌面usb “HD Camera”新摄像头1929×1080分辨率图像，标定参数如下，：
-内参矩阵intrinsicMatrix为（OpenCV格式）：
-
+ 对桌面usb “HD Camera”新摄像头1929×1080分辨率图像，棋盘网格每个格子大小为3.96cm，标定内参矩阵intrinsicMatrix为（OpenCV格式）：<br>
 
 | 795.0610     | 0 | 966.1896    |
 | :----:       |    :----:   |   :----: |
@@ -33,4 +31,6 @@
 
 **疑惑点**
 1. 如何理解各个map point的景深？即景深范围与orb尺度的关系？
+1. helperTrackLastKeyFrame.m文件函数中estimateWorldCameraPose使用这个来获取当前相机姿态，能否使用relativeCameraPose函数来代替（平移向量归一化处理）？
+1. 为何要剔除mapPoint/landmarks？难道是为了减少存储量还是计算量？
 

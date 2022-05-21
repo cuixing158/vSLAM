@@ -210,6 +210,7 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
         currPose, currFeatures, currPoints, mapPointsIdx, featureIdx, localKeyFrameIds);
     
     % Remove outlier map points that are observed in fewer than 3 key frames
+    % mapPointsIdx更改后为从1开始的索引点序号
     [mapPointSet, directionAndDepth, mapPointsIdx] = helperCullRecentMapPoints( ...
         mapPointSet, directionAndDepth, mapPointsIdx, newPointIdx);
     
@@ -339,6 +340,9 @@ if ~isempty(outlierIdx)
     mapPointSet   = removeWorldPoints(mapPointSet, outlierIdx);
     directionAndDepth = remove(directionAndDepth, outlierIdx);
     mapPointsIdx  = mapPointsIdx - arrayfun(@(x) nnz(x>outlierIdx), mapPointsIdx);% 2022.5.9不是很理解;2022.5.15,mapPointsIdx就是索引重新从1开始排序,本质就是序号平行移动
+    % 可以替换以下代码
+%     [~,idx] = sort(mapPointsIdx);
+%     mapPointsIdx(idx)=1:length(mapPointsIdx);
 end
 end
 
