@@ -33,4 +33,13 @@
 1. 如何理解各个map point的景深？即景深范围与orb尺度的关系？
 1. helperTrackLastKeyFrame.m文件函数中estimateWorldCameraPose使用这个来获取当前相机姿态，能否使用relativeCameraPose函数来代替（平移向量归一化处理）？
 1. 为何要剔除mapPoint/landmarks？难道是为了减少存储量还是计算量？
+1. 尺度由全局地图尺度改为累计尺度中值进行处理，地图更新实时加入Ground Truth来对比。
+
+## Evaluation
+对评估的轨迹路径和真值路径指标为ape(absolute pose error)和rpe(relative pose error)
+
+## Reference
+1. [Useful tools for the RGB-D benchmark](https://vision.in.tum.de/data/datasets/rgbd-dataset/tools)<br>
+
+
 

@@ -1,12 +1,12 @@
 %% 用于曾总UE里面仿真场景数据的解析
 
 %% 自定义数据
-simoutFile = "\\yunpan02\豪恩汽电\豪恩汽电研发中心\临时文件夹\simout\20220426\simout20220505.mat";
+simoutFile = "\\yunpan02\豪恩汽电\豪恩汽电研发中心\临时文件夹\simout\20220426\simout.mat";
 % dstRoot = "\\yunpan02\豪恩汽电\豪恩汽电研发中心\临时文件夹\simout\parkingLotImages";
-dstRoot = "E:\AllDataAndModels\underParkingLotImages20220505";
+dstRoot = "E:\AllDataAndModels\underParkingLotImages20220524";
 xLim = [-18,25];
 yLim = [10,15];
-zLim = [-0.5,2.5];
+zLim = [0,6];
 if ~isfolder(dstRoot)
     mkdir(dstRoot)
 end
@@ -42,9 +42,11 @@ while hasdata(arrds)
     currData = read(arrds);
     currImg = squeeze(currData.image);
     currCamLocation = currData.locationCamera;
+    currOriCam = currData.orientationCamera;
     currVehLocation = currData.locationVehicle;
+    currOriVehicle = currData.orientationVehicle;
     imgName = sprintf("%04d.png",numId);
-%     imwrite(currImg,fullfile(dstRoot,imgName));
+    imwrite(currImg,fullfile(dstRoot,imgName));
 
     % update plot
     imgObj.CData = currImg;
@@ -56,15 +58,25 @@ end
 toc
 % Update the camera trajectory
 set(gTrajectory, 'XData', refPath(:,1), 'YData', ...
-    refPath(:,2), 'ZData', ones(size(refPath(:,1))));
+    refPath(:,2), 'ZData', refPath(:,3));
 legend(MapPointsPlot.Axes,'TextColor','white','Location','northeast');
 
 %% write to csv
-filename = 'simUE.csv';
+filename = 'simUE_eular.csv';
 imds = imageDatastore(dstRoot);
 level = wildcardPattern + filesep;
 pat = asManyOfPattern(level);
 simData.image = extractAfter(imds.Files,pat);
+writetimetable(simData,fullfile(dstRoot,filename))
+
+%% 另一种四元数保存方式
+filename = 'simUE_quaternion.csv';
+oriCam = squeeze(simData.orientationCamera);
+oriVehicle = squeeze(simData.orientationVehicle);
+q_cam = eul2quat(oriCam,'ZYX');
+q_vehicle = eul2quat(oriVehicle,'ZYX');
+simData.orientationCamera = q_cam;
+simData.orientationVehicle = q_vehicle;
 writetimetable(simData,fullfile(dstRoot,filename))
 
 %% support functions
@@ -99,6 +111,9 @@ data = load(simoutFile);
 simData = data.out.simout;
 image = ts2timetable(simData.image);
 locationCamera = ts2timetable(simData.locationCamera);
+orientationCam = ts2timetable(simData.orientationCamera);
 locationVehicle = ts2timetable(simData.locationVehicle);
-simData = synchronize(image,locationCamera,locationVehicle);
+orientationVehicle = ts2timetable(simData.orientationVehicle);
+simData = synchronize(image,locationCamera,orientationCam,locationVehicle,...
+    orientationVehicle);
 end

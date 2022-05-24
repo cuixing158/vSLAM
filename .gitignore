@@ -1,7 +1,7 @@
 # cuixingxing 定义的.gitgnore文件,参考：https://www.zhihu.com/question/26247816 ，以后项目依据此文件适当修改，2021.9.26
 # 文件夹前面必须要用"/"才奏效，2022.3.8 
 #忽略所有文件和目录
-* 
+/* 
 !.gitignore
 !*.json
 !*.md
@@ -34,6 +34,7 @@
 !*.prj
 !*.txt
 !*.cgt
+!/evaluation/
 
 
 
