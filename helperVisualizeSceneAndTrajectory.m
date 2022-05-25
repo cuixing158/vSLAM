@@ -7,11 +7,11 @@ classdef helperVisualizeSceneAndTrajectory < handle
 %   Copyright 2020-2021 The MathWorks, Inc.
 
     properties
-        XLim = [-0.5 1]
+        XLim = [-18,26] % 根据定义的世界坐标系范围估算
         
-        YLim = [-0.5 0.5]
+        YLim = [8,15]
         
-        ZLim = [-0.5 5]
+        ZLim = [2,7]
 
         Axes
     end
@@ -22,14 +22,21 @@ classdef helperVisualizeSceneAndTrajectory < handle
         EstimatedTrajectory
         
         OptimizedTrajectory
+        
+        ActualTrajectory
 
         CameraPlot
     end
     
     methods (Access = public)
-        function obj = helperVisualizeSceneAndTrajectory(vSetKeyFrames, mapPoints)
+        function obj = helperVisualizeSceneAndTrajectory(vSetKeyFrames, mapPoints,cumGTruth)
+            arguments
+                vSetKeyFrames imageviewset 
+                mapPoints worldpointset
+                cumGTruth (:,1) rigid3d = rigid3d()
+            end
         
-            [xyzPoints, currPose, trajectory]  = retrievePlottedData(obj, vSetKeyFrames, mapPoints);
+            [xyzPoints, camCurrPose, trajectory]  = retrievePlottedData(obj, vSetKeyFrames, mapPoints);
              
             obj.MapPointsPlot = pcplayer(obj.XLim, obj.YLim, obj.ZLim, ...
                 'VerticalAxis', 'y', 'VerticalAxisDir', 'down', 'MarkerSize', 5);
@@ -45,31 +52,46 @@ classdef helperVisualizeSceneAndTrajectory < handle
             obj.Axes.Children.DisplayName = 'Map points';
             
             hold(obj.Axes, 'on');
+            estiTrajectory = trajectory;
       
+            % 尺度和坐标变换，转换到真值下
+            if length(cumGTruth)>1
+                actualTrans = vertcat(cumGTruth.Translation);
+                scale = 
+            end
+
             % Plot camera trajectory
-            obj.EstimatedTrajectory = plot3(obj.Axes, trajectory(:,1), trajectory(:,2), ...
-                trajectory(:,3), 'r', 'LineWidth', 2 , 'DisplayName', 'Estimated trajectory');
+            obj.EstimatedTrajectory = plot3(obj.Axes, estiTrajectory(:,1), estiTrajectory(:,2), ...
+                estiTrajectory(:,3), 'r', 'LineWidth', 2 , 'DisplayName', 'Estimated trajectory');
             
             % Plot the current cameras
-            obj.CameraPlot = plotCamera(currPose, 'Parent', obj.Axes, 'Size', 0.05);
-            view(obj.Axes, [0 -1 0]);
+            obj.CameraPlot = plotCamera(camCurrPose, 'Parent', obj.Axes, 'Size', 0.05);
+%             view(obj.Axes, [0 -1 0]);
 %             camroll(obj.Axes, 90);
         end
         
-        function updatePlot(obj, vSetKeyFrames, mapPoints, varargin)
+        function updatePlot(obj, vSetKeyFrames, mapPoints,cumGTruth)
+            arguments
+                obj
+                vSetKeyFrames imageviewset 
+                mapPoints worldpointset
+                cumGTruth (:,1) rigid3d = rigid3d() % 长度应当与vSetKeyFrames的imageID一致
+            end
             
             [xyzPoints, currPose, trajectory]  = retrievePlottedData(obj, vSetKeyFrames, mapPoints);
             
             % Update the point cloud
             color = xyzPoints(:, 2);
             color = -min(0.1, max(-0.4, color));
-            if nargin > 3
-                
-                color(varargin{1}) = 0.2;
-            end
             obj.MapPointsPlot.view(xyzPoints, color);
             
             % Update the camera trajectory
+             % 尺度和坐标变换，转换到真值下
+            if length(cumGTruth)>1
+                assert(length(cumGTruth)==length(vSetKeyFrames.ViewIds))
+                actualTrans = vertcat(cumGTruth.Translation);
+                scale = 
+            end
             set(obj.EstimatedTrajectory, 'XData', trajectory(:,1), 'YData', ...
                 trajectory(:,2), 'ZData', trajectory(:,3));
             
@@ -81,7 +103,7 @@ classdef helperVisualizeSceneAndTrajectory < handle
         end
         
         function plotOptimizedTrajectory(obj, poses)
-            % poses是传入的优化后的姿态，这个函数应当摒弃掉，因为我们没有回环检测优化姿态
+            % poses是传入的优化后的姿态，这个函数应当摒弃掉，因为我们没有回环检测优化姿态，但可以设想在终点检索图像进行优化
             % Delete the camera plot
             delete(obj.CameraPlot);
             

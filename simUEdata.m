@@ -46,7 +46,7 @@ while hasdata(arrds)
     currVehLocation = currData.locationVehicle;
     currOriVehicle = currData.orientationVehicle;
     imgName = sprintf("%04d.png",numId);
-    imwrite(currImg,fullfile(dstRoot,imgName));
+%     imwrite(currImg,fullfile(dstRoot,imgName));
 
     % update plot
     imgObj.CData = currImg;
@@ -75,8 +75,8 @@ oriCam = squeeze(simData.orientationCamera);
 oriVehicle = squeeze(simData.orientationVehicle);
 q_cam = eul2quat(oriCam,'ZYX');
 q_vehicle = eul2quat(oriVehicle,'ZYX');
-simData.orientationCamera = q_cam;
-simData.orientationVehicle = q_vehicle;
+simData.orientationCamera = flip(q_cam,2);
+simData.orientationVehicle = flip(q_vehicle,2);
 writetimetable(simData,fullfile(dstRoot,filename))
 
 %% support functions
