@@ -112,9 +112,9 @@ end % End of map initialization loop
 
 if isMapInitialized
     % Show matched features
-    hfeature = figure;
-    showMatchedFeatures(firstI, currI, prePoints(indexPairs(:,1)), ...
-        currPoints(indexPairs(:, 2)), 'montage', 'Parent', gca(hfeature));
+%     hfeature = figure;
+%     showMatchedFeatures(firstI, currI, prePoints(indexPairs(:,1)), ...
+%         currPoints(indexPairs(:, 2)), 'montage', 'Parent', gca(hfeature));
 else
     error('Unable to initialize the map.')
 end
@@ -154,16 +154,18 @@ mapPointSet   = addCorrespondences(mapPointSet, preViewId, newPointIdx, indexPai
 % Add image points corresponding to the map points in the second key frame
 mapPointSet   = addCorrespondences(mapPointSet, currViewId, newPointIdx, indexPairs(:,2));
 
-%% Refine and Visualize the Initial Reconstruction
+%% Refine and Visualize the Initial Reconstruction,初始关键帧的3d map points归一化
 
 [vSetKeyFrames, mapPointSet, directionAndDepth] = helperGlobalBundleAdjustment(...
     vSetKeyFrames, mapPointSet, directionAndDepth, intrinsics, relPose);
 
 % Visualize matched features in the current frame
-featurePlot   = helperVisualizeMatchedFeatures(currI, currPoints(indexPairs(:,2)));
+% featurePlot   = helperVisualizeMatchedFeatures(currI, currPoints(indexPairs(:,2)));
 
 % Visualize initial map points and camera trajectory
-mapPlot       = helperVisualizeSceneAndTrajectory(vSetKeyFrames, mapPointSet);
+keyFrameIds = [1;currFrameIdx-1];
+currGTruths = gTruth(keyFrameIds);
+mapPlot       = helperVisualizeSceneAndTrajectory(vSetKeyFrames, mapPointSet,currGTruths);
 
 % Show legend
 showLegend(mapPlot);
@@ -182,9 +184,6 @@ lastKeyFrameId    = currViewId;
 
 % Index of the last key frame in the input image sequence
 lastKeyFrameIdx   = currFrameIdx - 1; 
-
-% Indices of all the key frames in the input image sequence
-addedFramesIdx    = [1; lastKeyFrameIdx];
 
 isLoopClosed      = false;
 
@@ -214,7 +213,7 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
         isLastFrameKeyFrame, lastKeyFrameIdx, currFrameIdx, numSkipFrames, numPointsKeyFrame);
 
     % Visualize matched features
-    updatePlot(featurePlot, currI, currPoints(featureIdx));
+%     updatePlot(featurePlot, currI, currPoints(featureIdx));
     
     if ~isKeyFrame
         currFrameIdx = currFrameIdx + 1;
@@ -255,19 +254,16 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
         vSetKeyFrames, currKeyFrameId, intrinsics, newPointIdx);
     
     % Visualize 3D world points and camera trajectory
-    updatePlot(mapPlot, vSetKeyFrames, mapPointSet);
+    keyFrameIds  = [keyFrameIds; currFrameIdx]; %#ok<AGROW>
+    currGTruths = gTruth(keyFrameIds);
+    updatePlot(mapPlot, vSetKeyFrames, mapPointSet,currGTruths);
     
     % Initialize the loop closure database
     % Update IDs and indices
     lastKeyFrameId  = currKeyFrameId;
     lastKeyFrameIdx = currFrameIdx;
-    addedFramesIdx  = [addedFramesIdx; currFrameIdx]; %#ok<AGROW>
     currFrameIdx  = currFrameIdx + 1;
 end % End of main loop
-    optimizedPoses = vSetKeyFrames.Views;
-
-    % Plot the camera ground truth trajectory
- scaledTrajectory = plotActualTrajectory(mapPlot, gTruth(addedFramesIdx), optimizedPoses);
 
 % Show legend
 showLegend(mapPlot);
@@ -402,10 +398,11 @@ gTruth = repmat(rigid3d, height(gTruthData), 1);
 for i = 1:height(gTruthData) 
     currLocations = gTruthData{i,3:5};% 以车载摄像头位置为基准
     gTruth(i).Translation = currLocations;
-    currEular = gTruthData{i,6:8};
-    currEularDeg = rad2deg(currEular);
-    normalRotationMat = rotx(currEularDeg(1))*roty(currEularDeg(2))*rotz(currEularDeg(3));
-    postRotationMat = normalRotationMat';
+    currEular = gTruthData{i,6:8}; % 假设曾总角度顺序依次ZYX 
+%     currEularDeg = rad2deg(currEular);
+%     normalRotationMat = rotx(currEularDeg(1))*roty(currEularDeg(2))*rotz(currEularDeg(3));
+%     postRotationMat = normalRotationMat';
+    postRotationMat  = roty(90)*eul2rotm(currEular,'ZYX');% 默认开始朝向为Z轴正向，顺序为Z,Y,X
     gTruth(i).Rotation = postRotationMat;
 end
 end

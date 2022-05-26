@@ -1,17 +1,14 @@
 classdef helperVisualizeSceneAndTrajectory < handle
-%helperVisualizeMatchedFeatures show map points and camera trajectory
-%
-%   This is an example helper class that is subject to change or removal 
-%   in future releases.
-
-%   Copyright 2020-2021 The MathWorks, Inc.
+% 此类修改为只提供2个外部接口，一个初始化，另一个更新显示地图
 
     properties
         XLim = [-18,26] % 根据定义的世界坐标系范围估算
         
-        YLim = [8,15]
+        YLim = [1,20]
         
-        ZLim = [2,7]
+        ZLim = [0,10]
+
+        transformT % 初始关键帧到世界坐标系的转换
 
         Axes
     end
@@ -38,34 +35,53 @@ classdef helperVisualizeSceneAndTrajectory < handle
         
             [xyzPoints, camCurrPose, trajectory]  = retrievePlottedData(obj, vSetKeyFrames, mapPoints);
              
-            obj.MapPointsPlot = pcplayer(obj.XLim, obj.YLim, obj.ZLim, ...
-                'VerticalAxis', 'y', 'VerticalAxisDir', 'down', 'MarkerSize', 5);
+            obj.MapPointsPlot = pcplayer(obj.XLim, obj.YLim, obj.ZLim);
+%                 'VerticalAxis', 'y', 'VerticalAxisDir', 'down', 'MarkerSize', 5);
             
             obj.Axes  = obj.MapPointsPlot.Axes;
+            hold(obj.Axes,'on');% 防止背景颜色改变
             
             % Set figure location
             obj.Axes.Parent.Position = [100 100 800 350];
             
             color = xyzPoints(:, 2);
             color = -min(0.1, max(-0.4, color));
-            obj.MapPointsPlot.view(xyzPoints, color); 
-            obj.Axes.Children.DisplayName = 'Map points';
-            
-            hold(obj.Axes, 'on');
             estiTrajectory = trajectory;
       
             % 尺度和坐标变换，转换到真值下
+            obj.transformT = rigid3d();
             if length(cumGTruth)>1
+                assert(length(cumGTruth)==vSetKeyFrames.NumViews)
                 actualTrans = vertcat(cumGTruth.Translation);
-                scale = 
+                cumActualDist = cumsum(vecnorm(diff(actualTrans),2,2));
+                cumEstimateDist = cumsum(vecnorm(diff(estiTrajectory),2,2));
+                scale = median(cumActualDist./cumEstimateDist);
+                xyzPoints = xyzPoints.*scale;
+                camCurrPose.AbsolutePose = rigid3d(camCurrPose.AbsolutePose.Rotation,...
+                    camCurrPose.AbsolutePose.Translation.*scale);
+                estiTrajectory = estiTrajectory.*scale;
+              % 转换变换
+                 srcPose = rigid3d(eye(3),estiTrajectory(1,:));% 初始关键帧的第一个姿态
+                 dstPose = cumGTruth(1); %如何没有输入cumGTruth,则默认就是rigid3d()，即与srcPose一样
+%                  initGTpose = plotCamera('AbsolutePose',dstPose, 'Parent', obj.Axes, 'Size', 0.2);
+                 obj.transformT = rigid3d(srcPose.T*dstPose.T);% 摄像机物理坐标转换为世界坐标的变换
+
+                 obj.ActualTrajectory = plot3(obj.Axes,actualTrans(:,1),actualTrans(:,2),...
+                     actualTrans(:,3),'g','LineWidth',2,'DisplayName','Actual trajectory');
             end
 
+            estiTrajectory = transformPointsForward(obj.transformT,estiTrajectory);
+            camCurrPose.AbsolutePose = rigid3d(camCurrPose.AbsolutePose.T*obj.transformT.T);
+            xyzPoints = transformPointsForward(obj.transformT,xyzPoints);
+            
             % Plot camera trajectory
             obj.EstimatedTrajectory = plot3(obj.Axes, estiTrajectory(:,1), estiTrajectory(:,2), ...
                 estiTrajectory(:,3), 'r', 'LineWidth', 2 , 'DisplayName', 'Estimated trajectory');
             
+            obj.MapPointsPlot.view(xyzPoints, color); 
+%             obj.Axes.Children.DisplayName = 'Map points';
             % Plot the current cameras
-            obj.CameraPlot = plotCamera(camCurrPose, 'Parent', obj.Axes, 'Size', 0.05);
+            obj.CameraPlot = plotCamera(camCurrPose, 'Parent', obj.Axes, 'Size', 0.2);
 %             view(obj.Axes, [0 -1 0]);
 %             camroll(obj.Axes, 90);
         end
@@ -83,23 +99,39 @@ classdef helperVisualizeSceneAndTrajectory < handle
             % Update the point cloud
             color = xyzPoints(:, 2);
             color = -min(0.1, max(-0.4, color));
-            obj.MapPointsPlot.view(xyzPoints, color);
-            
+            estiTrajectory = trajectory;
+
             % Update the camera trajectory
              % 尺度和坐标变换，转换到真值下
-            if length(cumGTruth)>1
-                assert(length(cumGTruth)==length(vSetKeyFrames.ViewIds))
-                actualTrans = vertcat(cumGTruth.Translation);
-                scale = 
-            end
-            set(obj.EstimatedTrajectory, 'XData', trajectory(:,1), 'YData', ...
-                trajectory(:,2), 'ZData', trajectory(:,3));
+             if length(cumGTruth)>1
+                 assert(length(cumGTruth)==vSetKeyFrames.NumViews)
+                 actualTrans = vertcat(cumGTruth.Translation);
+                 cumActualDist = cumsum(vecnorm(diff(actualTrans),2,2));
+                 cumEstimateDist = cumsum(vecnorm(diff(estiTrajectory),2,2));
+                 scale = median(cumActualDist./cumEstimateDist);
+                 fprintf('current scale:%.2f\n',scale);
+                 xyzPoints = xyzPoints.*scale;
+                 currPose.AbsolutePose = rigid3d(currPose.AbsolutePose.Rotation,...
+                     currPose.AbsolutePose.Translation.*scale);
+                 estiTrajectory = estiTrajectory.*scale;
+                 set(obj.ActualTrajectory,'XData',actualTrans(:,1),'YData',actualTrans(:,2),...
+                      'ZData',actualTrans(:,3))
+              end
+            % 待加入对齐操作
+            xyzPoints = transformPointsForward(obj.transformT,xyzPoints);
+            currPose.AbsolutePose = rigid3d(currPose.AbsolutePose.T*obj.transformT.T);
+            estiTrajectory = transformPointsForward(obj.transformT,estiTrajectory);
             
+            % 更新轨迹
+            obj.MapPointsPlot.view(xyzPoints, color);
+            set(obj.EstimatedTrajectory, 'XData', estiTrajectory(:,1), 'YData', ...
+                estiTrajectory(:,2), 'ZData', estiTrajectory(:,3));
+           
             % Update the current camera pose since the first camera is fixed
             obj.CameraPlot.AbsolutePose = currPose.AbsolutePose;
             obj.CameraPlot.Label        = num2str(currPose.ViewId);
             
-%             drawnow limitrate
+%            drawnow limitrate
         end
         
         function plotOptimizedTrajectory(obj, poses)
@@ -217,12 +249,12 @@ classdef helperVisualizeSceneAndTrajectory < handle
             trajectory  = vertcat(camPoses.AbsolutePose.Translation);
             xyzPoints   = mapPoints.WorldPoints;%(mapPoints.UserData.Validity,:);
             
-            % Only plot the points within the limit
-            inPlotRange = xyzPoints(:, 1) > obj.XLim(1) & ...
-                xyzPoints(:, 1) < obj.XLim(2) & xyzPoints(:, 2) > obj.YLim(1) & ...
-                xyzPoints(:, 2) < obj.YLim(2) & xyzPoints(:, 3) > obj.ZLim(1) & ...
-                xyzPoints(:, 3) < obj.ZLim(2);
-            xyzPoints   = xyzPoints(inPlotRange, :);
+%             % Only plot the points within the limit
+%             inPlotRange = xyzPoints(:, 1) > obj.XLim(1) & ...
+%                 xyzPoints(:, 1) < obj.XLim(2) & xyzPoints(:, 2) > obj.YLim(1) & ...
+%                 xyzPoints(:, 2) < obj.YLim(2) & xyzPoints(:, 3) > obj.ZLim(1) & ...
+%                 xyzPoints(:, 3) < obj.ZLim(2);
+%             xyzPoints   = xyzPoints(inPlotRange, :);
         end
         
         function updatePlotScale(obj, scale)
