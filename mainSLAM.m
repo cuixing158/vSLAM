@@ -4,8 +4,10 @@ validIndexStart = 4;
 imds = imageDatastore(parkingLotRoot);
 imds = subset(imds,validIndexStart:length(imds.Files));
 gTruthData = readtable(fullfile(parkingLotRoot,"simUE_eular.csv"));
-gTruthData = gTruthData(validIndexStart:end,:);
 gTruth = helperGetSensorGroundTruth(gTruthData);
+initPose = gTruth(1);
+gTruth = gTruth(validIndexStart:end,:);
+
 
 %% 我们摄像头停车场视频
 % videoReader = VideoReader('E:\AllDataAndModels\videos20220519\WIN_20220519_11_16_10_Pro.mp4');
@@ -165,7 +167,7 @@ mapPointSet   = addCorrespondences(mapPointSet, currViewId, newPointIdx, indexPa
 % Visualize initial map points and camera trajectory
 keyFrameIds = [1;currFrameIdx-1];
 currGTruths = gTruth(keyFrameIds);
-mapPlot       = helperVisualizeSceneAndTrajectory(vSetKeyFrames, mapPointSet,currGTruths);
+mapPlot       = helperVisualizeSceneAndTrajectory(vSetKeyFrames, mapPointSet,currGTruths,initPose);
 
 % Show legend
 showLegend(mapPlot);
@@ -398,12 +400,12 @@ gTruth = repmat(rigid3d, height(gTruthData), 1);
 for i = 1:height(gTruthData) 
     currLocations = gTruthData{i,3:5};% 以车载摄像头位置为基准
     gTruth(i).Translation = currLocations;
-    currEular = gTruthData{i,6:8}; % 假设曾总角度顺序依次ZYX 
+    currEular = gTruthData{i,6:8}; % 假设曾总角度顺序依次XYZ 
 %     currEularDeg = rad2deg(currEular);
 %     normalRotationMat = rotx(currEularDeg(1))*roty(currEularDeg(2))*rotz(currEularDeg(3));
 %     postRotationMat = normalRotationMat';
-    postRotationMat  = roty(90)*eul2rotm(currEular,'ZYX');% 默认开始朝向为Z轴正向，顺序为Z,Y,X
-    gTruth(i).Rotation = postRotationMat;
+    postRotationMat  = eul2rotm(currEular,'XYZ')*roty(90);% 默认开始朝向为Z轴正向，顺序为Z,Y,X
+    gTruth(i).Rotation = postRotationMat';
 end
 end
 

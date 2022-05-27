@@ -26,11 +26,12 @@ classdef helperVisualizeSceneAndTrajectory < handle
     end
     
     methods (Access = public)
-        function obj = helperVisualizeSceneAndTrajectory(vSetKeyFrames, mapPoints,cumGTruth)
+        function obj = helperVisualizeSceneAndTrajectory(vSetKeyFrames, mapPoints,cumGTruth,initPose)
             arguments
                 vSetKeyFrames imageviewset 
                 mapPoints worldpointset
                 cumGTruth (:,1) rigid3d = rigid3d()
+                initPose (1,1) rigid3d = rigid3d() % 
             end
         
             [xyzPoints, camCurrPose, trajectory]  = retrievePlottedData(obj, vSetKeyFrames, mapPoints);
@@ -62,8 +63,12 @@ classdef helperVisualizeSceneAndTrajectory < handle
                 estiTrajectory = estiTrajectory.*scale;
               % 转换变换
                  srcPose = rigid3d(eye(3),estiTrajectory(1,:));% 初始关键帧的第一个姿态
+%                  dstPose = rigid3d(roty(90),cumGTruth(1).Translation);
+                 keyFramePose = cumGTruth(1);
+                 firstInitPose = rigid3d()
                  dstPose = cumGTruth(1); %如何没有输入cumGTruth,则默认就是rigid3d()，即与srcPose一样
-%                  initGTpose = plotCamera('AbsolutePose',dstPose, 'Parent', obj.Axes, 'Size', 0.2);
+                 dstPose.Rotation = (rotx(90)*eul2rotm([-0.000419181,-0.1113141,-3.132684],'XYZ')*roty(90))';
+                 %                  initGTpose = plotCamera('AbsolutePose',dstPose, 'Parent', obj.Axes, 'Size', 0.2);
                  obj.transformT = rigid3d(srcPose.T*dstPose.T);% 摄像机物理坐标转换为世界坐标的变换
 
                  obj.ActualTrajectory = plot3(obj.Axes,actualTrans(:,1),actualTrans(:,2),...
@@ -116,6 +121,7 @@ classdef helperVisualizeSceneAndTrajectory < handle
                  estiTrajectory = estiTrajectory.*scale;
                  set(obj.ActualTrajectory,'XData',actualTrans(:,1),'YData',actualTrans(:,2),...
                       'ZData',actualTrans(:,3))
+%                  obj.transformT.Rotation = cumGTruth(end).Rotation;
               end
             % 待加入对齐操作
             xyzPoints = transformPointsForward(obj.transformT,xyzPoints);
