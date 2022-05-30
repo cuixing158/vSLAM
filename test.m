@@ -1,9 +1,12 @@
-% format long
-% eulars = [-0.001180313	-0.1101197	-3.122032;
-% -0.001413606	-0.1086281	-3.119092;
-% -0.001928661	-0.1062565	-3.116415];
-% a = eul2quat(eulars,'XYZ')
-% b = quaternion(eulars,'euler','XYZ','point')
+%%  计算外参矩阵
+cameraPositions = readmatrix('E:\AllDataAndModels\underParkingLotImages20220524\simUE_eular.csv',...
+    'Range','C2:E407');
+vehiclePositions = readmatrix('E:\AllDataAndModels\underParkingLotImages20220524\simUE_eular.csv',...
+    'Range','I2:K407');
+dis = vecnorm((cameraPositions-vehiclePositions),2,2);
+[tform,inlierIndex,status]  = estimateGeometricTransform3D(cameraPositions,vehiclePositions,"rigid");
+
+
 
 %% 郭工左手坐标系的转换矩阵
 data = readmatrix('E:\AllDataAndModels\underParkingLotImages20220524\simUE_eular.csv',...
