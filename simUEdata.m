@@ -1,30 +1,45 @@
 %% 用于曾总UE里面仿真场景数据的解析
 
 %% 自定义数据
-simoutFile = "\\yunpan02\豪恩汽电\豪恩汽电研发中心\临时文件夹\simout\20220426\simout.mat";
+simoutFile = "\\yunpan02\豪恩汽电\豪恩汽电研发中心\临时文件夹\simout\20220527\simout100mNormalLight.mat";
 % dstRoot = "\\yunpan02\豪恩汽电\豪恩汽电研发中心\临时文件夹\simout\parkingLotImages";
-dstRoot = "E:\AllDataAndModels\underParkingLotImages20220524";
-xLim = [-18,25];
-yLim = [10,15];
+dstRoot = "E:\AllDataAndModels\underParkingLotImages20220527";
+xLim = [-20,25]; % 看仿真数据的实际范围估计
+yLim = [-45,15]; % 看仿真数据的实际范围
 zLim = [0,6];
 if ~isfolder(dstRoot)
     mkdir(dstRoot)
 end
 
 %% decode data
-simData = decodeSimUE(simoutFile);
+% images
+alldata = load(simoutFile);
+imgsArrds = arrayDatastore(alldata.out.simout.image.Data,ReadSize=1, IterationDimension=4);
+numId = 1;
+s = dir(dstRoot);
+while imgsArrds.hasdata()&&length(s)<3
+    imgDataCell = read(imgsArrds);
+    imgName = sprintf("%04d.png",numId);
+    imwrite(imgDataCell{1},fullfile(dstRoot,imgName));
+    numId= numId+1;
+end
+% locations and orientations
+locationCamera = ts2timetable(alldata.out.simout.locationCamera);
+orientationCam = ts2timetable(alldata.out.simout.orientationCamera);
+locationVehicle = ts2timetable(alldata.out.simout.locationVehicle);
+orientationVehicle = ts2timetable(alldata.out.simout.orientationVehicle);
+simData = synchronize(locationCamera,orientationCam,locationVehicle,...
+    orientationVehicle);
+
+% simData = decodeSimUE(simoutFile);
 arrds = arrayDatastore(simData,ReadSize=1, OutputType="same");
 
 %% show first image
 firstData = read(arrds);
-currImg = squeeze(firstData.image);
 currCamLocation = firstData.locationCamera;
 currVehLocation = firstData.locationVehicle;
 
-% plot image
-imgObj = imshow(currImg,Border="tight");
-MapPointsPlot = pcplayer(xLim, yLim, zLim, ...
-    'VerticalAxis', 'y', 'VerticalAxisDir', 'down', 'MarkerSize', 5);
+MapPointsPlot = pcplayer(xLim, yLim, zLim,'MarkerSize', 5);
 hold(MapPointsPlot.Axes,'on');
 
 % Plot camera trajectory
@@ -32,28 +47,21 @@ trajectory = reshape(currCamLocation,[],3);
 gTrajectory = plot3(MapPointsPlot.Axes, trajectory(:,1), trajectory(:,2), ...
     1, 'r.-', 'LineWidth', 2 , 'DisplayName', 'ground Truth trajectory');
 refPath = trajectory;
-view(MapPointsPlot.Axes, [0 0 1]);
+% view(MapPointsPlot.Axes, [0 0 1]);
 
 %% main loop
-numId = 1;
 arrds.reset();
 tic;
 while hasdata(arrds)
     currData = read(arrds);
-    currImg = squeeze(currData.image);
     currCamLocation = currData.locationCamera;
     currOriCam = currData.orientationCamera;
     currVehLocation = currData.locationVehicle;
     currOriVehicle = currData.orientationVehicle;
-    imgName = sprintf("%04d.png",numId);
-%     imwrite(currImg,fullfile(dstRoot,imgName));
 
     % update plot
-    imgObj.CData = currImg;
     trajectory = reshape(currCamLocation,[],3);
     refPath = [refPath;trajectory];
-    drawnow limitrate
-    numId = numId+1;
 end
 toc
 % Update the camera trajectory
@@ -73,8 +81,8 @@ writetimetable(simData,fullfile(dstRoot,filename))
 filename = 'simUE_quaternion.csv';
 oriCam = squeeze(simData.orientationCamera);
 oriVehicle = squeeze(simData.orientationVehicle);
-q_cam = eul2quat(oriCam,'ZYX');
-q_vehicle = eul2quat(oriVehicle,'ZYX');
+q_cam = eul2quat(oriCam,'XYZ');
+q_vehicle = eul2quat(oriVehicle,'XYZ');
 simData.orientationCamera = flip(q_cam,2);
 simData.orientationVehicle = flip(q_vehicle,2);
 writetimetable(simData,fullfile(dstRoot,filename))
@@ -107,6 +115,7 @@ function simData = decodeSimUE(simoutFile)
 % Implementation In Matlab R2022a
 % Copyright © 2022 long-horn.All Rights Reserved.
 %
+
 data = load(simoutFile);
 simData = data.out.simout;
 image = ts2timetable(simData.image);

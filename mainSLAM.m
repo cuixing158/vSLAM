@@ -1,9 +1,10 @@
 %% 使用曾总的图像做vSLAM
-parkingLotRoot = "E:\AllDataAndModels\underParkingLotImages20220524";%"H:\dataSets\vSLAM\parkingLotImages";%"E:\AllDataAndModels\parkingLotImages";%
+parkingLotRoot = "E:\AllDataAndModels\underParkingLotImages20220527";%"H:\dataSets\vSLAM\parkingLotImages";%"E:\AllDataAndModels\parkingLotImages";%
 validIndexStart = 4;
 imds = imageDatastore(parkingLotRoot);
 imds = subset(imds,validIndexStart:length(imds.Files));
 gTruthData = readtable(fullfile(parkingLotRoot,"simUE_eular.csv"));
+gTruthData = movevars(gTruthData,"image","After","Time");
 gTruth = helperGetSensorGroundTruth(gTruthData);
 initPose = gTruth(1);
 gTruth = gTruth(validIndexStart:end,:);
