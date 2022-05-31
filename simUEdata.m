@@ -6,7 +6,7 @@ simoutFile = "\\yunpan02\豪恩汽电\豪恩汽电研发中心\临时文件夹\s
 dstRoot = "E:\AllDataAndModels\underParkingLotImages20220527";
 xLim = [-20,25]; % 看仿真数据的实际范围估计
 yLim = [-45,15]; % 看仿真数据的实际范围
-zLim = [0,6];
+zLim = [0,7];
 if ~isfolder(dstRoot)
     mkdir(dstRoot)
 end
@@ -46,8 +46,7 @@ hold(MapPointsPlot.Axes,'on');
 trajectory = reshape(currCamLocation,[],3);
 gTrajectory = plot3(MapPointsPlot.Axes, trajectory(:,1), trajectory(:,2), ...
     1, 'r.-', 'LineWidth', 2 , 'DisplayName', 'ground Truth trajectory');
-refPath = trajectory;
-% view(MapPointsPlot.Axes, [0 0 1]);
+refPath = [];
 
 %% main loop
 arrds.reset();
@@ -61,12 +60,22 @@ while hasdata(arrds)
 
     % update plot
     trajectory = reshape(currCamLocation,[],3);
+    eular = reshape(currOriCam,[],3);
     refPath = [refPath;trajectory];
+    rotMatrix = eul2rotm(eular,'XYZ');
+    cameraR = rotMatrix*roty(90); % 注意顺序和通用旋转矩阵乘法format
+    cameraAbsolutePose = rigid3d(cameraR',trajectory);
+    if mod(size(refPath,1),100)==1
+        plotCamera('AbsolutePose',cameraAbsolutePose,...
+            'Parent', MapPointsPlot.Axes, 'Size', 1,...
+            'Color',[0,1,0],'Opacity',0.8);
+    end
+    % Update the camera trajectory
+    set(gTrajectory, 'XData', refPath(:,1), 'YData', ...
+        refPath(:,2), 'ZData', refPath(:,3));
+     drawnow limitrate
 end
 toc
-% Update the camera trajectory
-set(gTrajectory, 'XData', refPath(:,1), 'YData', ...
-    refPath(:,2), 'ZData', refPath(:,3));
 legend(MapPointsPlot.Axes,'TextColor','white','Location','northeast');
 
 %% write to csv

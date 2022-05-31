@@ -2,11 +2,11 @@ classdef helperVisualizeSceneAndTrajectory < handle
 % 此类修改为只提供2个外部接口，一个初始化，另一个更新显示地图
 
     properties
-        XLim = [-18,26] % 根据定义的世界坐标系范围估算
+        XLim = [-25,30] % 根据定义的世界坐标系范围估算
         
-        YLim = [1,20]
+        YLim = [-50,20]
         
-        ZLim = [0,10]
+        ZLim = [-5,10]
 
         transformT % 初始关键帧到世界坐标系的转换
 
@@ -67,7 +67,7 @@ classdef helperVisualizeSceneAndTrajectory < handle
                  keyFramePose = cumGTruth(1);
                  firstInitPose = rigid3d()
                  dstPose = cumGTruth(1); %如何没有输入cumGTruth,则默认就是rigid3d()，即与srcPose一样
-                 dstPose.Rotation = (rotx(90)*eul2rotm([-0.000419181,-0.1113141,-3.132684],'XYZ')*roty(90))';
+%                  dstPose.Rotation = (rotx(90)*eul2rotm([-0.000419181,-0.1113141,-3.132684],'XYZ')*roty(90))';
                  %                  initGTpose = plotCamera('AbsolutePose',dstPose, 'Parent', obj.Axes, 'Size', 0.2);
                  obj.transformT = rigid3d(srcPose.T*dstPose.T);% 摄像机物理坐标转换为世界坐标的变换
 

@@ -9,7 +9,6 @@ gTruth = helperGetSensorGroundTruth(gTruthData);
 initPose = gTruth(1);
 gTruth = gTruth(validIndexStart:end,:);
 
-
 %% 我们摄像头停车场视频
 % videoReader = VideoReader('E:\AllDataAndModels\videos20220519\WIN_20220519_11_16_10_Pro.mp4');
 % videoPlayer = vision.VideoPlayer;
@@ -26,7 +25,7 @@ gTruth = gTruth(validIndexStart:end,:);
 % imageSize      = [1080, 1920]; % in pixels [mrows, ncols]
 
 focalLength    = [1046, 1046];  % specified in units of pixels，曾总提供的
-principalPoint = [ 1920/2,1080/2];  % in pixels [x, y]
+principalPoint = [1920/2,1080/2];  % in pixels [x, y]
 imageSize      = [1080, 1920]; % in pixels [mrows, ncols]
 
 % focalLength    = [700, 700];  % specified in units of pixels,demo 自带的
@@ -405,7 +404,7 @@ for i = 1:height(gTruthData)
 %     currEularDeg = rad2deg(currEular);
 %     normalRotationMat = rotx(currEularDeg(1))*roty(currEularDeg(2))*rotz(currEularDeg(3));
 %     postRotationMat = normalRotationMat';
-    postRotationMat  = eul2rotm(currEular,'XYZ')*roty(90);% 默认开始朝向为Z轴正向，顺序为Z,Y,X
+    postRotationMat  = eul2rotm(currEular,'XYZ')*roty(90);% 默认开始朝向为Z轴正向
     gTruth(i).Rotation = postRotationMat';
 end
 end
