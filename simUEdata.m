@@ -1,11 +1,11 @@
 %% 用于曾总UE里面仿真场景数据的解析
 
 %% 自定义数据
-simoutFile = "\\yunpan02\豪恩汽电\豪恩汽电研发中心\临时文件夹\simout\20220527\simout100mNormalLight.mat";
+simoutFile = "E:\AllDataAndModels\mysimOut.mat";
 % dstRoot = "\\yunpan02\豪恩汽电\豪恩汽电研发中心\临时文件夹\simout\parkingLotImages";
-dstRoot = "E:\AllDataAndModels\underParkingLotImages20220527";
-xLim = [-25,25]; % 看仿真数据的实际范围估计
-yLim = [-45,15]; % 看仿真数据的实际范围
+dstRoot = "E:\AllDataAndModels\parkingLotImages";
+xLim = [-45,30]; % 看仿真数据的实际范围估计
+yLim = [20,55]; % 看仿真数据的实际范围
 zLim = [0,7];
 if ~isfolder(dstRoot)
     mkdir(dstRoot)
@@ -14,30 +14,29 @@ end
 %% decode data
 % images
 alldata = load(simoutFile);
-imgsArrds = arrayDatastore(alldata.out.simout.image.Data,ReadSize=1, IterationDimension=4);
+imgsArrds = arrayDatastore(alldata.simOut.images.Data,ReadSize=1, IterationDimension=4);
 numId = 1;
 s = dir(dstRoot);
-while imgsArrds.hasdata()&&length(s)<3
+while imgsArrds.hasdata()
     imgDataCell = read(imgsArrds);
     imgName = sprintf("%04d.png",numId);
     imwrite(imgDataCell{1},fullfile(dstRoot,imgName));
     numId= numId+1;
 end
 % locations and orientations
-locationCamera = ts2timetable(alldata.out.simout.locationCamera);
-orientationCam = ts2timetable(alldata.out.simout.orientationCamera);
-locationVehicle = ts2timetable(alldata.out.simout.locationVehicle);
-orientationVehicle = ts2timetable(alldata.out.simout.orientationVehicle);
-simData = synchronize(locationCamera,orientationCam,locationVehicle,...
-    orientationVehicle);
+locationCamera = ts2timetable(alldata.simOut.location);
+orientationCam = ts2timetable(alldata.simOut.orientation);
+% locationVehicle = ts2timetable(alldata.simout.locationVehicle);
+% orientationVehicle = ts2timetable(alldata.simout.orientationVehicle);
+simData = synchronize(locationCamera,orientationCam);
 
 % simData = decodeSimUE(simoutFile);
 arrds = arrayDatastore(simData,ReadSize=1, OutputType="same");
 
 %% show first image
 firstData = read(arrds);
-currCamLocation = firstData.locationCamera;
-currVehLocation = firstData.locationVehicle;
+currCamLocation = firstData.Data_locationCamera;
+% currVehLocation = firstData.locationVehicle;
 
 MapPointsPlot = pcplayer(xLim, yLim, zLim,'MarkerSize', 5);
 hold(MapPointsPlot.Axes,'on');
@@ -53,10 +52,10 @@ arrds.reset();
 tic;
 while hasdata(arrds)
     currData = read(arrds);
-    currCamLocation = currData.locationCamera;
-    currOriCam = currData.orientationCamera;
-    currVehLocation = currData.locationVehicle;
-    currOriVehicle = currData.orientationVehicle;
+    currCamLocation = currData.Data_locationCamera;
+    currOriCam = currData.Data_orientationCam;
+%     currVehLocation = currData.locationVehicle;
+%     currOriVehicle = currData.orientationVehicle;
 
     % update plot
     trajectory = reshape(currCamLocation,[],3);
@@ -68,7 +67,7 @@ while hasdata(arrds)
     if mod(size(refPath,1),100)==1
         plotCamera('AbsolutePose',cameraAbsolutePose,...
             'Parent', MapPointsPlot.Axes, 'Size', 1,...
-            'Color',[0,1,0],'Opacity',0.8,'AxesVisible',true);
+            'Color',[0.2,0.7,0.3],'Opacity',0.5,'AxesVisible',true);
     end
     % Update the camera trajectory
     set(gTrajectory, 'XData', refPath(:,1), 'YData', ...
@@ -87,14 +86,14 @@ simData.image = extractAfter(imds.Files,pat);
 writetimetable(simData,fullfile(dstRoot,filename))
 
 %% 另一种四元数保存方式
-filename = 'simUE_quaternion.csv';
-oriCam = squeeze(simData.orientationCamera);
-oriVehicle = squeeze(simData.orientationVehicle);
-q_cam = eul2quat(oriCam,'XYZ');
-q_vehicle = eul2quat(oriVehicle,'XYZ');
-simData.orientationCamera = flip(q_cam,2);
-simData.orientationVehicle = flip(q_vehicle,2);
-writetimetable(simData,fullfile(dstRoot,filename))
+% filename = 'simUE_quaternion.csv';
+% oriCam = squeeze(simData.orientationCamera);
+% oriVehicle = squeeze(simData.orientationVehicle);
+% q_cam = eul2quat(oriCam,'XYZ');
+% q_vehicle = eul2quat(oriVehicle,'XYZ');
+% simData.orientationCamera = flip(q_cam,2);
+% simData.orientationVehicle = flip(q_vehicle,2);
+% writetimetable(simData,fullfile(dstRoot,filename))
 
 %% support functions
 function simData = decodeSimUE(simoutFile)

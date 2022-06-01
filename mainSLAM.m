@@ -167,7 +167,7 @@ mapPointSet   = addCorrespondences(mapPointSet, currViewId, newPointIdx, indexPa
 % Visualize initial map points and camera trajectory
 keyFrameIds = [1;currFrameIdx-1];
 currGTruths = gTruth(keyFrameIds);
-mapPlot       = helperVisualizeSceneAndTrajectory(vSetKeyFrames, mapPointSet,currGTruths,initPose);
+mapPlot       = helperVisualizeSceneAndTrajectory(vSetKeyFrames, mapPointSet,currGTruths);
 
 % Show legend
 showLegend(mapPlot);
@@ -258,8 +258,11 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
     % Visualize 3D world points and camera trajectory
     keyFrameIds  = [keyFrameIds; currFrameIdx]; %#ok<AGROW>
     currGTruths = gTruth(keyFrameIds);
+    t1 = tic;
     updatePlot(mapPlot, vSetKeyFrames, mapPointSet,currGTruths);
-    
+    t2 = toc(t1);
+    fprintf('updatePlot take time:%.2f s.\n',t2);
+
     % Initialize the loop closure database
     % Update IDs and indices
     lastKeyFrameId  = currKeyFrameId;
@@ -400,11 +403,8 @@ gTruth = repmat(rigid3d, height(gTruthData), 1);
 for i = 1:height(gTruthData) 
     currLocations = gTruthData{i,3:5};% 以车载摄像头位置为基准
     gTruth(i).Translation = currLocations;
-    currEular = gTruthData{i,6:8}; % 假设曾总角度顺序依次XYZ 
-%     currEularDeg = rad2deg(currEular);
-%     normalRotationMat = rotx(currEularDeg(1))*roty(currEularDeg(2))*rotz(currEularDeg(3));
-%     postRotationMat = normalRotationMat';
-    postRotationMat  = eul2rotm(currEular,'XYZ')*roty(90)*rotz(-90);% 默认开始朝向为Z轴正向
+    currEular = gTruthData{i,6:8}; % 曾总角度顺序依次XYZ 
+    postRotationMat  = eul2rotm(currEular,'XYZ')*roty(90)*rotz(-90);% 相机默认开始朝向为Z轴正向
     gTruth(i).Rotation = postRotationMat';
 end
 end
