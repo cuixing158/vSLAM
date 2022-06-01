@@ -4,7 +4,7 @@
 simoutFile = "\\yunpan02\豪恩汽电\豪恩汽电研发中心\临时文件夹\simout\20220527\simout100mNormalLight.mat";
 % dstRoot = "\\yunpan02\豪恩汽电\豪恩汽电研发中心\临时文件夹\simout\parkingLotImages";
 dstRoot = "E:\AllDataAndModels\underParkingLotImages20220527";
-xLim = [-20,25]; % 看仿真数据的实际范围估计
+xLim = [-25,25]; % 看仿真数据的实际范围估计
 yLim = [-45,15]; % 看仿真数据的实际范围
 zLim = [0,7];
 if ~isfolder(dstRoot)
@@ -63,12 +63,12 @@ while hasdata(arrds)
     eular = reshape(currOriCam,[],3);
     refPath = [refPath;trajectory];
     rotMatrix = eul2rotm(eular,'XYZ');
-    cameraR = rotMatrix*roty(90); % 注意顺序和通用旋转矩阵乘法format
+    cameraR = rotMatrix*roty(90)*rotz(-90); % 注意顺序和通用旋转矩阵乘法format
     cameraAbsolutePose = rigid3d(cameraR',trajectory);
     if mod(size(refPath,1),100)==1
         plotCamera('AbsolutePose',cameraAbsolutePose,...
             'Parent', MapPointsPlot.Axes, 'Size', 1,...
-            'Color',[0,1,0],'Opacity',0.8);
+            'Color',[0,1,0],'Opacity',0.8,'AxesVisible',true);
     end
     % Update the camera trajectory
     set(gTrajectory, 'XData', refPath(:,1), 'YData', ...

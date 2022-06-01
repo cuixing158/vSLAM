@@ -404,7 +404,7 @@ for i = 1:height(gTruthData)
 %     currEularDeg = rad2deg(currEular);
 %     normalRotationMat = rotx(currEularDeg(1))*roty(currEularDeg(2))*rotz(currEularDeg(3));
 %     postRotationMat = normalRotationMat';
-    postRotationMat  = eul2rotm(currEular,'XYZ')*roty(90);% 默认开始朝向为Z轴正向
+    postRotationMat  = eul2rotm(currEular,'XYZ')*roty(90)*rotz(-90);% 默认开始朝向为Z轴正向
     gTruth(i).Rotation = postRotationMat';
 end
 end

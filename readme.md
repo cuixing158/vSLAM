@@ -14,6 +14,9 @@
 ![orb-slam2](images/orb-slam2.jpg)<br>
 1. 2022.5.22,尺度由全局地图尺度改为累计尺度中值进行处理，地图更新实时加入Ground Truth来对比。
 1. 2022.5.30,坐标系统,roll,pitch,yaw规则均以参考2和3中的定义进行。
+1. 2022.6.1, 曾总新数据集下在拐弯出后出现较大漂移偏差。
+![orb-match](images/vSLAM.gif)<br>
+
 ## 相机标定内外参
 - **相机内参**
  对桌面usb “HD Camera”新摄像头1929×1080分辨率图像，棋盘网格每个格子大小为3.96cm，标定内参矩阵intrinsicMatrix为（OpenCV格式）：<br>

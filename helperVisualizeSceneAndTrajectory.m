@@ -4,9 +4,9 @@ classdef helperVisualizeSceneAndTrajectory < handle
     properties
         XLim = [-25,30] % 根据定义的世界坐标系范围估算
         
-        YLim = [-50,20]
+        YLim = [-45,15]
         
-        ZLim = [-5,10]
+        ZLim = [0,10]
 
         transformT % 初始关键帧到世界坐标系的转换
 
@@ -67,7 +67,7 @@ classdef helperVisualizeSceneAndTrajectory < handle
                  keyFramePose = cumGTruth(1);
                  firstInitPose = rigid3d()
                  dstPose = cumGTruth(1); %如何没有输入cumGTruth,则默认就是rigid3d()，即与srcPose一样
-%                  dstPose.Rotation = (rotx(90)*eul2rotm([-0.000419181,-0.1113141,-3.132684],'XYZ')*roty(90))';
+                 dstPose.Rotation = (eul2rotm([0,0,-pi],'XYZ')*roty(90)*rotz(-90))';
                  %                  initGTpose = plotCamera('AbsolutePose',dstPose, 'Parent', obj.Axes, 'Size', 0.2);
                  obj.transformT = rigid3d(srcPose.T*dstPose.T);% 摄像机物理坐标转换为世界坐标的变换
 
@@ -136,8 +136,18 @@ classdef helperVisualizeSceneAndTrajectory < handle
             % Update the current camera pose since the first camera is fixed
             obj.CameraPlot.AbsolutePose = currPose.AbsolutePose;
             obj.CameraPlot.Label        = num2str(currPose.ViewId);
-            
-%            drawnow limitrate
+            if mod(size(estiTrajectory,1),10)==1
+                plotCamera('AbsolutePose',currPose.AbsolutePose,...
+                    'Parent', obj.Axes, 'Size', 1,...
+                    'Color',[0.2,0.6,0.3],'Opacity',0.5,'AxesVisible',true,...
+                    'Label',num2str(currPose.ViewId));
+            end
+            offset = 5;
+            set(obj.Axes,'XLim',[min(estiTrajectory(:,1))-offset,max(estiTrajectory(:,1))+offset]);
+            set(obj.Axes,'YLim',[min(estiTrajectory(:,2))-offset,max(estiTrajectory(:,2))+offset]);
+            set(obj.Axes,'ZLim',[min(estiTrajectory(:,3))-offset,max(estiTrajectory(:,3))+offset]);
+            exportgraphics(obj.Axes,"vSLAM.gif","Append",true,"BackgroundColor","current")
+            %            drawnow limitrate
         end
         
         function plotOptimizedTrajectory(obj, poses)
