@@ -10,6 +10,8 @@ classdef helperVisualizeSceneAndTrajectory < handle
 
         transformT % 初始关键帧到世界坐标系的转换
 
+        Scale % 尺度
+
         Axes
     end
     
@@ -56,7 +58,8 @@ classdef helperVisualizeSceneAndTrajectory < handle
                 actualTrans = vertcat(cumGTruth.Translation);
                 cumActualDist = cumsum(vecnorm(diff(actualTrans),2,2));
                 cumEstimateDist = cumsum(vecnorm(diff(estiTrajectory),2,2));
-                scale = median(cumActualDist./cumEstimateDist);
+                obj.Scale = median(cumActualDist./cumEstimateDist);
+                scale = obj.Scale;
                 xyzPoints = xyzPoints.*scale;
                 camCurrPose.AbsolutePose = rigid3d(camCurrPose.AbsolutePose.Rotation,...
                     camCurrPose.AbsolutePose.Translation.*scale);
@@ -109,7 +112,8 @@ classdef helperVisualizeSceneAndTrajectory < handle
                  actualTrans = vertcat(cumGTruth.Translation);
                  cumActualDist = cumsum(vecnorm(diff(actualTrans),2,2));
                  cumEstimateDist = cumsum(vecnorm(diff(estiTrajectory),2,2));
-                 scale = median(cumActualDist./cumEstimateDist);
+%                  scale = median(cumActualDist./cumEstimateDist);
+                 scale = obj.Scale;
                  fprintf('current scale:%.2f\n',scale);
                  xyzPoints = xyzPoints.*scale;
                  currPose.AbsolutePose = rigid3d(currPose.AbsolutePose.Rotation,...
@@ -155,6 +159,17 @@ classdef helperVisualizeSceneAndTrajectory < handle
             set(obj.Axes,'YLim',[ymin-Yoffset,ymax+Yoffset]);
             set(obj.Axes,'ZLim',[zmin-Zoffset,zmax+Zoffset]);
 %             exportgraphics(obj.Axes,"vSLAM.gif","Append",true,"BackgroundColor","current")
+        end
+        
+        function plotOptimizedTrajectory(obj, poses)
+            
+            % Delete the camera plot
+            delete(obj.CameraPlot);
+            
+            % Plot the optimized trajectory
+            trans = vertcat(poses.AbsolutePose.Translation);
+            obj.OptimizedTrajectory = plot3(obj.Axes, trans(:, 1), trans(:, 2), trans(:, 3), 'm', ...
+                'LineWidth', 2, 'DisplayName', 'Optimized trajectory');
         end
         
         function showLegend(obj)

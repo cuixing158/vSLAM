@@ -1,39 +1,13 @@
-%% 使用曾总的图像做vSLAM
-parkingLotRoot = "H:\dataSets\vSLAM\parkingLotImages";%"H:\dataSets\vSLAM\parkingLotImages";%"E:\AllDataAndModels\parkingLotImages";%
-validIndexStart = 4;
-imds = imageDatastore(parkingLotRoot);
-imds = subset(imds,validIndexStart:length(imds.Files));
-gTruthData = readtable(fullfile(parkingLotRoot,"simUE_eular.csv"));
-gTruthData = movevars(gTruthData,"image","After","Time");
-gTruth = helperGetSensorGroundTruth(gTruthData);
-initPose = gTruth(1);
-gTruth = gTruth(validIndexStart:end,:);
+function [mapPlot, optimizedPoses, addedFramesIdx] = helperVisualSLAM(imds, intrinsics)
+%helperVisualSLAM Evaluate the performance of a visual SLAM algorithm
+%   The implementation details of the visual SLAM algorithm can be found in
+%   the Monocular Visual Simultaneous Localization and Mapping example.
+%
+%   This is an example helper function that is subject to change or removal 
+%   in future releases.
 
-%% 我们摄像头停车场视频
-% videoReader = VideoReader('E:\AllDataAndModels\videos20220519\WIN_20220519_11_16_10_Pro.mp4');
-% videoPlayer = vision.VideoPlayer;
-% while hasFrame(videoReader)
-%    frame = readFrame(videoReader);
-%    frame = imrotate(frame,180);
-%    step(videoPlayer,frame);
-% end
-% videoPlayer.release()
+%   Copyright 2020 The MathWorks, Inc.
 
-%% Camera intrinsics
-% focalLength    = [467.421, 467.3539];  % specified in units of pixels，自己标定的，暂时标定参数与实际采集视频不匹配，有问题再弄
-% principalPoint = [ 320.7214,180.4589];  % in pixels [x, y]
-% imageSize      = [1080, 1920]; % in pixels [mrows, ncols]
-
-% focalLength    = [1046, 1046];  % specified in units of pixels，曾总提供的
-% principalPoint = [1920/2,1080/2];  % in pixels [x, y]
-% imageSize      = [1080, 1920]; % in pixels [mrows, ncols]
-
-focalLength    = [700, 700];  % specified in units of pixels,demo 自带的
-principalPoint = [ 600,180];  % in pixels [x, y]
-imageSize      = [370, 1230]; % in pixels [mrows, ncols]
-intrinsics     = cameraIntrinsics(focalLength, principalPoint, imageSize);
-
-%% 主模块
 % Set random seed for reproducibility
 rng(0);
 
@@ -66,7 +40,7 @@ while ~isMapInitialized && currFrameIdx < numel(imds.Files)
         'MaxRatio', 0.7, 'MatchThreshold', 40);
 
     % If not enough matches are found, check the next frame
-    minMatches = 10;
+    minMatches = 50;
     if size(indexPairs, 1) < minMatches 
         continue
     end
@@ -74,13 +48,22 @@ while ~isMapInitialized && currFrameIdx < numel(imds.Files)
     preMatchedPoints  = prePoints(indexPairs(:,1),:);
     currMatchedPoints = currPoints(indexPairs(:,2),:);
     
+    % Compute homography and evaluate reconstruction
+    [tformH, scoreH, inliersIdxH] = helperComputeHomography(preMatchedPoints, currMatchedPoints);
+
     % Compute fundamental matrix and evaluate reconstruction
-    [tformF, ~, inliersIdxF] = helperComputeFundamentalMatrix(preMatchedPoints, currMatchedPoints);
-
+    [tformF, scoreF, inliersIdxF] = helperComputeFundamentalMatrix(preMatchedPoints, currMatchedPoints);
+    
     % Select the model based on a heuristic
-    inlierTformIdx = inliersIdxF;
-    tform          = tformF;
-
+    ratio = scoreH/(scoreH + scoreF);
+    ratioThreshold = 0.45;
+    if ratio > ratioThreshold
+        inlierTformIdx = inliersIdxH;
+        tform          = tformH;
+    else
+        inlierTformIdx = inliersIdxF;
+        tform          = tformF;
+    end
 
     % Computes the camera location up to scale. Use half of the 
     % points to reduce computation
@@ -114,16 +97,14 @@ end % End of map initialization loop
 
 if isMapInitialized
     % Show matched features
-%     hfeature = figure;
-%     showMatchedFeatures(firstI, currI, prePoints(indexPairs(:,1)), ...
-%         currPoints(indexPairs(:, 2)), 'montage', 'Parent', gca(hfeature));
+    hfeature = figure;
+    showMatchedFeatures(firstI, currI, prePoints(indexPairs(:,1)), ...
+        currPoints(indexPairs(:, 2)), 'montage', 'Parent', gca(hfeature));
 else
     error('Unable to initialize the map.')
 end
 
 %% Store Initial Key Frames and Map Points
-% 到这里只有第一个姿态和最后的姿态地面特征点和车引擎盖特征点匹配，UE的图应当间隔较小再获取图像才对
-
 % Create an empty imageviewset object to store key frames
 vSetKeyFrames = imageviewset;
 
@@ -156,22 +137,31 @@ mapPointSet   = addCorrespondences(mapPointSet, preViewId, newPointIdx, indexPai
 % Add image points corresponding to the map points in the second key frame
 mapPointSet   = addCorrespondences(mapPointSet, currViewId, newPointIdx, indexPairs(:,2));
 
-%% Refine and Visualize the Initial Reconstruction,初始关键帧的3d map points归一化
+%% Refine and Visualize the Initial Reconstruction
 
 [vSetKeyFrames, mapPointSet, directionAndDepth] = helperGlobalBundleAdjustment(...
     vSetKeyFrames, mapPointSet, directionAndDepth, intrinsics, relPose);
 
 % Visualize matched features in the current frame
-% featurePlot   = helperVisualizeMatchedFeatures(currI, currPoints(indexPairs(:,2)));
+featurePlot   = helperVisualizeMatchedFeatures(currI, currPoints(indexPairs(:,2)));
 
 % Visualize initial map points and camera trajectory
-keyFrameIds = [1;currFrameIdx-1];
-currGTruths = gTruth(keyFrameIds);
-mapPlot       = helperVisualizeSceneAndTrajectory(vSetKeyFrames, mapPointSet,currGTruths);
+mapPlot       = helperVisualizeSceneAndTrajectory(vSetKeyFrames, mapPointSet);
 
 % Show legend
 showLegend(mapPlot);
 
+%% Initialize Place Recognition Database
+
+% Load the bag of features data created offline
+bofData         = load('bagOfFeaturesDataSLAM.mat');
+
+% Initialize the place recognition database
+loopDatabase    = invertedImageIndex(bofData.bof, "SaveFeatureLocations", false);
+
+% Add features of the first two key frames to the database
+addImageFeatures(loopDatabase, preFeatures, preViewId);
+addImageFeatures(loopDatabase, currFeatures, currViewId);
 
 %% Tracking
 % The tracking process is performed using every frame and determines when to 
@@ -186,6 +176,9 @@ lastKeyFrameId    = currViewId;
 
 % Index of the last key frame in the input image sequence
 lastKeyFrameIdx   = currFrameIdx - 1; 
+
+% Indices of all the key frames in the input image sequence
+addedFramesIdx    = [1; lastKeyFrameIdx];
 
 isLoopClosed      = false;
 
@@ -205,8 +198,7 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
         vSetKeyFrames.Views, currFeatures, currPoints, lastKeyFrameId, ...
         intrinsics, scaleFactor);
     
-    % Track the local map and check if the current frame is a key
-    % frame，跟踪局部地图以获取更多的对应点
+    % Track the local map and check if the current frame is a key frame
     numSkipFrames     = 15;
     numPointsKeyFrame = 120;
     [localKeyFrameIds, currPose, mapPointsIdx, featureIdx, isKeyFrame] = ...
@@ -215,7 +207,7 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
         isLastFrameKeyFrame, lastKeyFrameIdx, currFrameIdx, numSkipFrames, numPointsKeyFrame);
 
     % Visualize matched features
-%     updatePlot(featurePlot, currI, currPoints(featureIdx));
+    updatePlot(featurePlot, currI, currPoints(featureIdx));
     
     if ~isKeyFrame
         currFrameIdx = currFrameIdx + 1;
@@ -235,7 +227,6 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
         currPose, currFeatures, currPoints, mapPointsIdx, featureIdx, localKeyFrameIds);
     
     % Remove outlier map points that are observed in fewer than 3 key frames
-    % mapPointsIdx更改后为从1开始的索引点序号
     [mapPointSet, directionAndDepth, mapPointsIdx] = helperCullRecentMapPoints( ...
         mapPointSet, directionAndDepth, mapPointsIdx, newPointIdx);
     
@@ -256,25 +247,75 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
         vSetKeyFrames, currKeyFrameId, intrinsics, newPointIdx);
     
     % Visualize 3D world points and camera trajectory
-    keyFrameIds  = [keyFrameIds; currFrameIdx]; %#ok<AGROW>
-    currGTruths = gTruth(keyFrameIds);
-    t1 = tic;
-    updatePlot(mapPlot, vSetKeyFrames, mapPointSet,currGTruths);
-    t2 = toc(t1);
-    fprintf('updatePlot take time:%.2f s.\n',t2);
-
+    updatePlot(mapPlot, vSetKeyFrames, mapPointSet);
+    
+%% Loop Closure
     % Initialize the loop closure database
+
+    % Check loop closure after some key frames have been created    
+    if currKeyFrameId > 100
+        
+        % Detect possible loop closure key frame candidates
+        loopEdgeNumMatches = 40;
+        [isDetected, validLoopCandidates] = helperCheckLoopClosure(vSetKeyFrames, currKeyFrameId, ...
+            loopDatabase, currI, loopEdgeNumMatches);
+        
+        if isDetected 
+            % Add loop closure connections
+            isStereo = false;
+            [mapPointSet, vSetKeyFrames, loopClosureEdge] = helperAddLoopConnections(...
+                mapPointSet, vSetKeyFrames, validLoopCandidates, ...
+                currKeyFrameId, currFeatures, currPoints, loopEdgeNumMatches, isStereo);
+            isLoopClosed = ~isempty(loopClosureEdge);
+        end
+    end
+    
+    % If no loop closure is detected, add current features into the database
+    if ~isLoopClosed
+        addImageFeatures(loopDatabase,  currFeatures, currKeyFrameId);
+    end
+    
     % Update IDs and indices
     lastKeyFrameId  = currKeyFrameId;
     lastKeyFrameIdx = currFrameIdx;
+    addedFramesIdx  = [addedFramesIdx; currFrameIdx]; %#ok<AGROW>
     currFrameIdx  = currFrameIdx + 1;
 end % End of main loop
 
-% Show legend
+if ~isLoopClosed
+    disp('Loop closure cannot be found');
+    optimizedPoses = [];
+    return
+end
+
+% Create a similarity pose graph from the key frames set
+G = createPoseGraph(vSetKeyFrames);
+
+% Remove weak edges and keep loop closure edges
+EG = rmedge(G, find(G.Edges.Weight < minNumMatches & ...
+    ~ismember(G.Edges.EndNodes, loopClosureEdge, 'rows')));
+
+% Optimize the similarity pose graph
+optimG = optimizePoseGraph(EG, 'g2o-levenberg-marquardt');
+optimizedPoses = optimG.Nodes(:, 1:2);
+
+% Update the view poses
+vSetKeyFramesOptim = updateView(vSetKeyFrames, optimizedPoses);
+
+% Update map points after optimizing the poses
+mapPointSet = helperUpdateGlobalMap(mapPointSet, directionAndDepth, ...
+    vSetKeyFrames, vSetKeyFramesOptim, optimG.Nodes.Scale);
+
+updatePlot(mapPlot, vSetKeyFrames, mapPointSet);
+
+% Plot the optimized camera trajectory
+plotOptimizedTrajectory(mapPlot, optimizedPoses)
+
+% Update legend
 showLegend(mapPlot);
+end
 
-
-%%
+%--------------------------------------------------------------------------
 function [features, validPoints] = helperDetectAndExtractFeatures(Irgb, ...
     scaleFactor, numLevels, varargin)
 %helperDetectAndExtractFeatures detect and extract features
@@ -299,6 +340,33 @@ points = selectUniform(points, numPoints, size(Igray, 1:2));
 
 % Extract features
 [features, validPoints] = extractFeatures(Igray, points);
+end
+
+%--------------------------------------------------------------------------
+function [H, score, inliersIndex] = helperComputeHomography(matchedPoints1, matchedPoints2)
+%helperComputeHomography compute homography and evaluate reconstruction
+
+[H, inliersLogicalIndex] = estimateGeometricTransform2D( ...
+    matchedPoints1, matchedPoints2, 'similarity', ...
+    'MaxNumTrials', 5e3, 'MaxDistance', 4);
+
+inlierPoints1 = matchedPoints1(inliersLogicalIndex);
+inlierPoints2 = matchedPoints2(inliersLogicalIndex);
+
+inliersIndex  = find(inliersLogicalIndex);
+
+locations1 = inlierPoints1.Location;
+locations2 = inlierPoints2.Location;
+
+xy1In2     = transformPointsForward(H, locations1);
+xy2In1     = transformPointsInverse(H, locations2);
+error1in2  = sum((locations2 - xy1In2).^2, 2);
+error2in1  = sum((locations1 - xy2In1).^2, 2);
+
+outlierThreshold = 6;
+
+score = sum(max(outlierThreshold-error1in2, 0)) + ...
+    sum(max(outlierThreshold-error2in1, 0));
 end
 
 %--------------------------------------------------------------------------
@@ -363,16 +431,12 @@ end
 %--------------------------------------------------------------------------
 function [mapPointSet, directionAndDepth, mapPointsIdx] = helperCullRecentMapPoints(...
         mapPointSet, directionAndDepth, mapPointsIdx, newPointIdx)
-%helperCullRecentMapPoints cull recently added map
-%points；此函数功能应该是剔除非最近添加的map points之外的点，官方注释应当调整
+%helperCullRecentMapPoints cull recently added map points
 outlierIdx    = setdiff(newPointIdx, mapPointsIdx);
 if ~isempty(outlierIdx)
     mapPointSet   = removeWorldPoints(mapPointSet, outlierIdx);
     directionAndDepth = remove(directionAndDepth, outlierIdx);
-    mapPointsIdx  = mapPointsIdx - arrayfun(@(x) nnz(x>outlierIdx), mapPointsIdx);% 2022.5.9不是很理解;2022.5.15,mapPointsIdx就是索引重新从1开始排序,本质就是序号平行移动
-    % 可以替换以下代码
-%     [~,idx] = sort(mapPointsIdx);
-%     mapPointsIdx(idx)=1:length(mapPointsIdx);
+    mapPointsIdx  = mapPointsIdx - arrayfun(@(x) nnz(x>outlierIdx), mapPointsIdx);
 end
 end
 
@@ -397,15 +461,3 @@ for i = 1: mapPointSet.Count
 end
 mapPointSet = updateWorldPoints(mapPointSet, indices, positionsNew);
 end
-
-function gTruth = helperGetSensorGroundTruth(gTruthData)
-gTruth = repmat(rigid3d, height(gTruthData), 1);
-for i = 1:height(gTruthData) 
-    currLocations = gTruthData{i,3:5};% 以车载摄像头位置为基准
-    gTruth(i).Translation = currLocations;
-    currEular = gTruthData{i,6:8}; % 曾总角度顺序依次XYZ 
-    postRotationMat  = eul2rotm(currEular,'XYZ')*roty(90)*rotz(-90);% 相机默认开始朝向为Z轴正向
-    gTruth(i).Rotation = postRotationMat';
-end
-end
-
