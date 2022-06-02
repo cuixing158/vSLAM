@@ -1,5 +1,5 @@
 %% 使用曾总的图像做vSLAM
-parkingLotRoot = "E:\AllDataAndModels\parkingLotImages";%"H:\dataSets\vSLAM\parkingLotImages";%"E:\AllDataAndModels\parkingLotImages";%
+parkingLotRoot = "E:\AllDataAndModels\underParkingLotImages20220527";%"H:\dataSets\vSLAM\parkingLotImages";%"E:\AllDataAndModels\parkingLotImages";%
 validIndexStart = 4;
 imds = imageDatastore(parkingLotRoot);
 imds = subset(imds,validIndexStart:length(imds.Files));
@@ -8,6 +8,10 @@ gTruthData = movevars(gTruthData,"image","After","Time");
 gTruth = helperGetSensorGroundTruth(gTruthData);
 initPose = gTruth(1);
 gTruth = gTruth(validIndexStart:end,:);
+
+% 间隔取帧
+imds = subset(imds,1:2:length(imds.Files));
+gTruth = gTruth(1:2:length(gTruth));
 
 %% 我们摄像头停车场视频
 % videoReader = VideoReader('E:\AllDataAndModels\videos20220519\WIN_20220519_11_16_10_Pro.mp4');
@@ -24,13 +28,13 @@ gTruth = gTruth(validIndexStart:end,:);
 % principalPoint = [ 320.7214,180.4589];  % in pixels [x, y]
 % imageSize      = [1080, 1920]; % in pixels [mrows, ncols]
 
-% focalLength    = [1046, 1046];  % specified in units of pixels，曾总提供的
-% principalPoint = [1920/2,1080/2];  % in pixels [x, y]
-% imageSize      = [1080, 1920]; % in pixels [mrows, ncols]
+focalLength    = [1046, 1046];  % specified in units of pixels，曾总提供的
+principalPoint = [1920/2,1080/2];  % in pixels [x, y]
+imageSize      = [1080, 1920]; % in pixels [mrows, ncols]
 
-focalLength    = [700, 700];  % specified in units of pixels,demo 自带的
-principalPoint = [ 600,180];  % in pixels [x, y]
-imageSize      = [370, 1230]; % in pixels [mrows, ncols]
+% focalLength    = [700, 700];  % specified in units of pixels,demo 自带的
+% principalPoint = [ 600,180];  % in pixels [x, y]
+% imageSize      = [370, 1230]; % in pixels [mrows, ncols]
 intrinsics     = cameraIntrinsics(focalLength, principalPoint, imageSize);
 
 %% 主模块
@@ -167,7 +171,7 @@ mapPointSet   = addCorrespondences(mapPointSet, currViewId, newPointIdx, indexPa
 % Visualize initial map points and camera trajectory
 keyFrameIds = [1;currFrameIdx-1];
 currGTruths = gTruth(keyFrameIds);
-mapPlot       = helperVisualizeSceneAndTrajectory(vSetKeyFrames, mapPointSet,currGTruths);
+mapPlot       = visualizeSceneAndTrajectory(vSetKeyFrames, mapPointSet,currGTruths);
 
 % Show legend
 showLegend(mapPlot);
@@ -229,7 +233,6 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
     currKeyFrameId  = currKeyFrameId + 1;
 
     %% Local Mapping
-
     % Add the new key frame 
     [mapPointSet, vSetKeyFrames] = helperAddNewKeyFrame(mapPointSet, vSetKeyFrames, ...
         currPose, currFeatures, currPoints, mapPointsIdx, featureIdx, localKeyFrameIds);
@@ -274,7 +277,7 @@ end % End of main loop
 showLegend(mapPlot);
 
 
-%%
+%% 一些支持子函数
 function [features, validPoints] = helperDetectAndExtractFeatures(Irgb, ...
     scaleFactor, numLevels, varargin)
 %helperDetectAndExtractFeatures detect and extract features

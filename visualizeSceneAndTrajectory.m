@@ -67,7 +67,7 @@ classdef visualizeSceneAndTrajectory < handle
               % 转换变换
                  srcPose = rigid3d(eye(3),estiTrajectory(1,:));% 初始关键帧的第一个姿态
                  dstPose = cumGTruth(1); %如何没有输入cumGTruth,则默认就是rigid3d()，即与srcPose一样
-%                  dstPose.Rotation = (eul2rotm([0,0,-pi],'XYZ')*roty(90)*rotz(-90))';
+%                  dstPose.Rotation = (eul2rotm([0,0,-3.12667],'XYZ')*roty(90)*rotz(-90))';
                  %                  initGTpose = plotCamera('AbsolutePose',dstPose, 'Parent', obj.Axes, 'Size', 0.2);
                  obj.transformT = rigid3d(srcPose.T*dstPose.T);% 摄像机物理坐标转换为世界坐标的变换
 
@@ -112,8 +112,8 @@ classdef visualizeSceneAndTrajectory < handle
                  actualTrans = vertcat(cumGTruth.Translation);
                  cumActualDist = cumsum(vecnorm(diff(actualTrans),2,2));
                  cumEstimateDist = cumsum(vecnorm(diff(estiTrajectory),2,2));
-%                  scale = median(cumActualDist./cumEstimateDist);
-                 scale = obj.Scale;
+                 scale = median(cumActualDist./cumEstimateDist);
+%                  scale = obj.Scale;
                  fprintf('current scale:%.2f\n',scale);
                  xyzPoints = xyzPoints.*scale;
                  currPose.AbsolutePose = rigid3d(currPose.AbsolutePose.Rotation,...
@@ -123,7 +123,7 @@ classdef visualizeSceneAndTrajectory < handle
                       'ZData',actualTrans(:,3))
 %                  obj.transformT.Rotation = cumGTruth(end).Rotation;
               end
-            % 待加入对齐操作
+            % 加入对齐操作
             xyzPoints = transformPointsForward(obj.transformT,xyzPoints);
             currPose.AbsolutePose = rigid3d(currPose.AbsolutePose.T*obj.transformT.T);
             estiTrajectory = transformPointsForward(obj.transformT,estiTrajectory);
