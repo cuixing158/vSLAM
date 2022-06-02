@@ -20,7 +20,10 @@ new_data = T1*Tz(pi/2)*Tx(pi/2)*data';
 p1 = [1;1;1];
 P1 = T1*Tz(pi/2)*Tx(pi/2)*p1
 
+<<<<<<< HEAD
 
 
 
 
+=======
+>>>>>>> 570ee2e123138efa8375dad8cdc8153cdfc1881b

@@ -10,8 +10,11 @@ classdef helperVisualizeSceneAndTrajectory < handle
 
         transformT % 初始关键帧到世界坐标系的转换
 
+<<<<<<< HEAD
         Scale % 尺度
 
+=======
+>>>>>>> 570ee2e123138efa8375dad8cdc8153cdfc1881b
         Axes
     end
     
@@ -58,8 +61,12 @@ classdef helperVisualizeSceneAndTrajectory < handle
                 actualTrans = vertcat(cumGTruth.Translation);
                 cumActualDist = cumsum(vecnorm(diff(actualTrans),2,2));
                 cumEstimateDist = cumsum(vecnorm(diff(estiTrajectory),2,2));
+<<<<<<< HEAD
                 obj.Scale = median(cumActualDist./cumEstimateDist);
                 scale = obj.Scale;
+=======
+                scale = median(cumActualDist./cumEstimateDist);
+>>>>>>> 570ee2e123138efa8375dad8cdc8153cdfc1881b
                 xyzPoints = xyzPoints.*scale;
                 camCurrPose.AbsolutePose = rigid3d(camCurrPose.AbsolutePose.Rotation,...
                     camCurrPose.AbsolutePose.Translation.*scale);
@@ -112,8 +119,12 @@ classdef helperVisualizeSceneAndTrajectory < handle
                  actualTrans = vertcat(cumGTruth.Translation);
                  cumActualDist = cumsum(vecnorm(diff(actualTrans),2,2));
                  cumEstimateDist = cumsum(vecnorm(diff(estiTrajectory),2,2));
+<<<<<<< HEAD
 %                  scale = median(cumActualDist./cumEstimateDist);
                  scale = obj.Scale;
+=======
+                 scale = median(cumActualDist./cumEstimateDist);
+>>>>>>> 570ee2e123138efa8375dad8cdc8153cdfc1881b
                  fprintf('current scale:%.2f\n',scale);
                  xyzPoints = xyzPoints.*scale;
                  currPose.AbsolutePose = rigid3d(currPose.AbsolutePose.Rotation,...
@@ -161,6 +172,7 @@ classdef helperVisualizeSceneAndTrajectory < handle
 %             exportgraphics(obj.Axes,"vSLAM.gif","Append",true,"BackgroundColor","current")
         end
         
+<<<<<<< HEAD
         function plotOptimizedTrajectory(obj, poses)
             
             % Delete the camera plot
@@ -172,6 +184,8 @@ classdef helperVisualizeSceneAndTrajectory < handle
                 'LineWidth', 2, 'DisplayName', 'Optimized trajectory');
         end
         
+=======
+>>>>>>> 570ee2e123138efa8375dad8cdc8153cdfc1881b
         function showLegend(obj)
             % Add a legend to the axes
             hLegend = legend(obj.Axes, 'Location',  'northwest', ...

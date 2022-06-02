@@ -1,5 +1,9 @@
 %% 使用曾总的图像做vSLAM
+<<<<<<< HEAD
 parkingLotRoot = "H:\dataSets\vSLAM\parkingLotImages";%"H:\dataSets\vSLAM\parkingLotImages";%"E:\AllDataAndModels\parkingLotImages";%
+=======
+parkingLotRoot = "E:\AllDataAndModels\underParkingLotImages20220527";%"H:\dataSets\vSLAM\parkingLotImages";%"E:\AllDataAndModels\parkingLotImages";%
+>>>>>>> 570ee2e123138efa8375dad8cdc8153cdfc1881b
 validIndexStart = 4;
 imds = imageDatastore(parkingLotRoot);
 imds = subset(imds,validIndexStart:length(imds.Files));
@@ -24,6 +28,7 @@ gTruth = gTruth(validIndexStart:end,:);
 % principalPoint = [ 320.7214,180.4589];  % in pixels [x, y]
 % imageSize      = [1080, 1920]; % in pixels [mrows, ncols]
 
+<<<<<<< HEAD
 % focalLength    = [1046, 1046];  % specified in units of pixels，曾总提供的
 % principalPoint = [1920/2,1080/2];  % in pixels [x, y]
 % imageSize      = [1080, 1920]; % in pixels [mrows, ncols]
@@ -31,6 +36,15 @@ gTruth = gTruth(validIndexStart:end,:);
 focalLength    = [700, 700];  % specified in units of pixels,demo 自带的
 principalPoint = [ 600,180];  % in pixels [x, y]
 imageSize      = [370, 1230]; % in pixels [mrows, ncols]
+=======
+focalLength    = [1046, 1046];  % specified in units of pixels，曾总提供的
+principalPoint = [1920/2,1080/2];  % in pixels [x, y]
+imageSize      = [1080, 1920]; % in pixels [mrows, ncols]
+
+% focalLength    = [700, 700];  % specified in units of pixels,demo 自带的
+% principalPoint = [ 600,180];  % in pixels [x, y]
+% imageSize      = [370, 1230]; % in pixels [mrows, ncols]
+>>>>>>> 570ee2e123138efa8375dad8cdc8153cdfc1881b
 intrinsics     = cameraIntrinsics(focalLength, principalPoint, imageSize);
 
 %% 主模块
