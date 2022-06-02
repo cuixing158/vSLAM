@@ -247,7 +247,9 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
         vSetKeyFrames, currKeyFrameId, intrinsics, newPointIdx);
     
     % Visualize 3D world points and camera trajectory
+    tic
     updatePlot(mapPlot, vSetKeyFrames, mapPointSet);
+    toc
     
 %% Loop Closure
     % Initialize the loop closure database
