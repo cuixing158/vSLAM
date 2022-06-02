@@ -33,3 +33,4 @@ figure;plotCamera('AbsolutePose',cameraPose)
 axis on;axis equal
 grid on
 
+

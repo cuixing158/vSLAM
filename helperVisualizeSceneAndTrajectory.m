@@ -13,6 +13,8 @@ classdef helperVisualizeSceneAndTrajectory < handle
         
         ZLim = [-0.5 2.5]
 
+        Scale % 尺度
+
         Axes
     end
     
@@ -108,6 +110,17 @@ classdef helperVisualizeSceneAndTrajectory < handle
                 'g','LineWidth',2, 'DisplayName', 'Actual trajectory');
             view(obj.Axes, [0 0 1]);
             drawnow limitrate
+        end
+        
+        function plotOptimizedTrajectory(obj, poses)
+            
+            % Delete the camera plot
+            delete(obj.CameraPlot);
+            
+            % Plot the optimized trajectory
+            trans = vertcat(poses.AbsolutePose.Translation);
+            obj.OptimizedTrajectory = plot3(obj.Axes, trans(:, 1), trans(:, 2), trans(:, 3), 'm', ...
+                'LineWidth', 2, 'DisplayName', 'Optimized trajectory');
         end
         
         function showLegend(obj)
