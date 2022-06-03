@@ -4,7 +4,7 @@
 >matlab中众多工具箱都有涉及到旋转矩阵，欧拉角，四元数等的转换，但目前最新版本2022a中各个工具箱还不完全统一明确，这里以**通用习惯**进行表述一些常用的操作。
 
 本文默认都是以右手坐标系，extrinsic rotation/point rotation，点坐标以列向量形式在旋转矩阵右侧相乘的惯例进行，除非特别说明。根据`rotx`函数文档，点绕x,y,z坐标轴旋转对应的旋转矩阵分别如下：<br>
-![rotation matrix](images/Rotation_matrix.png)
+![rotation_matrix](images/Rotation_matrix.png)<br>
 比如空间点$p1(x_1,y_1,z_1)$绕z轴旋转$\theta$度得到$p2(x_2,y_2,z_2)$,则数学上表示为：<br>
 
 $$\left\lbrack \begin{array}{c}
@@ -41,7 +41,8 @@ err =
 ```
 
 ## rigid3d 函数
-computer vision toolbox与其他工具箱旋转矩阵表述不同，比如这个rigid3d函数，在vSLAM中表示姿态（Location和Orientation），用的非常广泛。该函数对象包含2个属性，即RotationMatrix和Translation,分别对应Orientation和Location，它们数组大小必须是3×3、1×3。注意：这个rigid3d函数的旋转矩阵与上述**通用理解形式**互为转置关系,其齐次矩阵T为4×4的矩阵，形式如下：
+computer vision toolbox与其他工具箱旋转矩阵表述不同，比如这个rigid3d函数，在vSLAM中表示姿态（Location和Orientation），用的非常广泛。该函数对象包含2个属性，即RotationMatrix和Translation,分别对应Orientation和Location，它们数组大小必须是3×3、1×3。注意：这个rigid3d函数的旋转矩阵与上述**通用理解形式**互为转置关系,其齐次矩阵T为4×4的矩阵，形式如下：<br>
+
 $$T=\left\lbrack \begin{array}{cc}
 R_{3\times 3}  & 0\\
 t_{1\times 3}  & 1
