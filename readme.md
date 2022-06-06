@@ -14,8 +14,9 @@
 ![orb-slam2](images/orb-slam2.jpg)<br>
 1. 2022.5.22,尺度由全局地图尺度改为累计尺度中值进行处理，地图更新实时加入Ground Truth来对比。
 1. 2022.5.30,坐标系统,roll,pitch,yaw规则均以参考2和3中的定义进行。
-1. 2022.6.1, 曾总新数据集"20220527"下在拐弯出后出现较大漂移偏差。
-![orb-match](images/vSLAM.gif)<br>
+1. 2022.6.1, 曾总新数据集"20220527"下在拐弯（90°）出后出现较大漂移偏差(135°)方向。
+1. 2022.6.2, 曾总数据集“20220527”在隔帧选取的情况下，算法误差迅速减小，位置误差约2m/100m.
+![orb-map](images/vSLAM.gif)<br>
 
 ## 相机标定内外参
 - **相机内参**
@@ -55,4 +56,4 @@
 1. [Useful tools for the RGB-D benchmark](https://vision.in.tum.de/data/datasets/rgbd-dataset/tools)<br>
 1. [Coordinate Systems in Automated Driving Toolbox](https://ww2.mathworks.cn/help/driving/ug/coordinate-systems.html)<br>
 1. [Coordinate Systems for Unreal Engine Simulation in Automated Driving Toolbox](https://ww2.mathworks.cn/help/driving/ug/coordinate-systems-for-3d-simulation-in-automated-driving-toolbox.html)
-
+1. [导航系统中里程计研究综述](https://cloud.tencent.com/developer/article/1812407)

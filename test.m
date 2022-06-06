@@ -7,29 +7,18 @@ dis = vecnorm((cameraPositions-vehiclePositions),2,2);
 [tform,inlierIndex,status]  = estimateGeometricTransform3D(cameraPositions,vehiclePositions,"rigid");
 
 
-
-%% 郭工左手坐标系的转换矩阵
-data = readmatrix('E:\AllDataAndModels\underParkingLotImages20220524\simUE_eular.csv',...
-    'Range','C2:E407');
-T1 = [1,0,0;0,1,0;0,0,-1];
-Tz = @(x)[cos(x),-sin(x),0;sin(x),cos(x),0;0,0,1];
-Tx = @(x)[1,0,0;0,cos(x),sin(x);0,-sin(x),cos(x)];
-Ty = @(x)[cos(x),0,-sin(x);0,1,0;sin(x),0,cos(x)];
-new_data = T1*Tz(pi/2)*Tx(pi/2)*data';
-
-p1 = [1;1;1];
-P1 = T1*Tz(pi/2)*Tx(pi/2)*p1
-
-%%
+%% 验证eul2rotm函数使用原则
 thetaRadians = rand(1,3);
 thetaDegrees = rad2deg(thetaRadians);
 myR1 = eul2rotm(thetaRadians,'XYZ');
 myR2 = rotx(thetaDegrees(1))*roty(thetaDegrees(2))*rotz(thetaDegrees(3));
 err = myR1-myR2
 
-%%
+%% 模拟车载摄像头朝向
+myR = eul2rotm([0,-pi/6,-pi],'XYZ');
 cameraPose = rigid3d((myR*roty(90)*rotz(-90))',[0,0,0]);
-figure;plotCamera('AbsolutePose',cameraPose)
+figure;plotCamera('AbsolutePose',cameraPose,'AxesVisible',true)
 axis on;axis equal
 grid on
+xlabel('x');ylabel('y');zlabel('z')
 
