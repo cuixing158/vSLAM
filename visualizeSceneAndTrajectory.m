@@ -69,7 +69,7 @@ classdef visualizeSceneAndTrajectory < handle
               % 转换变换
                  srcPose = rigid3d(eye(3),estiTrajectory(1,:));% 初始关键帧的第一个姿态
                  dstPose = cumGTruth(1); %如何没有输入cumGTruth,则默认就是rigid3d()，即与srcPose一样
-                 dstPose.Rotation = (eul2rotm([0,0.11136,-3.12667],'XYZ')*roty(90)*rotz(-90))';
+%                  dstPose.Rotation = (eul2rotm([0.0007,0.11136,3.12667],'XYZ')*roty(90)*rotz(-90))';
                  %                  initGTpose = plotCamera('AbsolutePose',dstPose, 'Parent', obj.Axes, 'Size', 0.2);
                  obj.transformT = rigid3d(srcPose.T*dstPose.T);% 摄像机物理坐标转换为世界坐标的变换
 
@@ -145,7 +145,7 @@ classdef visualizeSceneAndTrajectory < handle
                 end
                 plotCamera('AbsolutePose',currPose.AbsolutePose,...
                     'Parent', obj.Axes, 'Size', camSize,...
-                    'Color',[0.2,0.6,0.3],'Opacity',0.5,'AxesVisible',true,...
+                    'Color',[0.2,0.6,0.7],'Opacity',0.9,'AxesVisible',true,...
                     'Label',num2str(currPose.ViewId));
             end
             xmin = min(estiTrajectory(:,1));
@@ -160,7 +160,7 @@ classdef visualizeSceneAndTrajectory < handle
             set(obj.Axes,'XLim',[xmin-Xoffset,xmax+Xoffset]);
             set(obj.Axes,'YLim',[ymin-Yoffset,ymax+Yoffset]);
             set(obj.Axes,'ZLim',[zmin-Zoffset,zmax+Zoffset]);
-            exportgraphics(obj.Axes,"vSLAM.gif","Append",true,"BackgroundColor","current")
+%             exportgraphics(obj.Axes,"vSLAM.gif","Append",true,"BackgroundColor","current")
         end
         
         function plotOptimizedTrajectory(obj, poses)
@@ -178,6 +178,7 @@ classdef visualizeSceneAndTrajectory < handle
             % Add a legend to the axes
             hLegend = legend(obj.Axes, 'Location',  'northwest', ...
                 'TextColor', [1 1 1], 'FontWeight', 'bold');
+            set(obj.Axes,'ZLim',[0,6]);
         end
     end
     

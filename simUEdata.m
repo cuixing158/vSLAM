@@ -1,11 +1,11 @@
 %% 用于曾总UE里面仿真场景数据的解析
 
 %% 自定义数据
-simoutFile = "E:\AllDataAndModels\mysimOut.mat";
+simoutFile = "\\yunpan02\豪恩汽电\豪恩汽电研发中心\临时文件夹\simout\20220606\simout100mNormalLight20220606.mat";
 % dstRoot = "\\yunpan02\豪恩汽电\豪恩汽电研发中心\临时文件夹\simout\parkingLotImages";
-dstRoot = "E:\AllDataAndModels\parkingLotImages";
-xLim = [-45,30]; % 看仿真数据的实际范围估计
-yLim = [20,55]; % 看仿真数据的实际范围
+dstRoot = "E:\AllDataAndModels\underParkingLotImages20220606";
+xLim = [-25,30]; % 看仿真数据的实际范围估计
+yLim = [-50,15]; % 看仿真数据的实际范围
 zLim = [0,7];
 if ~isfolder(dstRoot)
     mkdir(dstRoot)
@@ -14,28 +14,38 @@ end
 %% decode data
 % images
 alldata = load(simoutFile);
-imgsArrds = arrayDatastore(alldata.simOut.images.Data,ReadSize=1, IterationDimension=4);
+imgsArrds = arrayDatastore(alldata.out.simout.image.Data,ReadSize=1, IterationDimension=4);
 numId = 1;
 s = dir(dstRoot);
-while imgsArrds.hasdata()
+while imgsArrds.hasdata()&&length(s)<3
     imgDataCell = read(imgsArrds);
     imgName = sprintf("%04d.png",numId);
     imwrite(imgDataCell{1},fullfile(dstRoot,imgName));
     numId= numId+1;
 end
 % locations and orientations
-locationCamera = ts2timetable(alldata.simOut.location);
-orientationCam = ts2timetable(alldata.simOut.orientation);
-% locationVehicle = ts2timetable(alldata.simout.locationVehicle);
-% orientationVehicle = ts2timetable(alldata.simout.orientationVehicle);
-simData = synchronize(locationCamera,orientationCam);
+locationCamera = ts2timetable(alldata.out.simout.locationCamera);
+orientationCam = ts2timetable(alldata.out.simout.orientationCamera);
+locationVehicle = ts2timetable(alldata.out.simout.locationVehicle);
+orientationVehicle = ts2timetable(alldata.out.simout.orientationVehicle);
+simData = synchronize(locationCamera,orientationCam,locationVehicle,orientationVehicle);
+
+% adjust format
+simData.locationCamera = squeeze(simData.locationCamera);
+simData.locationVehicle = squeeze(simData.locationVehicle);
+oriCam = squeeze(simData.orientationCamera);% n*3
+oriVehicle = squeeze(simData.orientationVehicle);% n*3
+simData.orientationCamera = oriCam;
+simData.orientationVehicle = oriVehicle;
+simData.orientationCamera(:,2) = -oriCam(:,2);% 注意数据有"问题"，可能是UE软件左手坐标系导致
+simData.orientationVehicle(:,2) = -oriVehicle(:,2);% 注意数据有"问题"，可能是UE软件左手坐标系导致
 
 % simData = decodeSimUE(simoutFile);
 arrds = arrayDatastore(simData,ReadSize=1, OutputType="same");
 
 %% show first image
 firstData = read(arrds);
-currCamLocation = firstData.Data_locationCamera;
+currCamLocation = firstData.locationCamera;
 % currVehLocation = firstData.locationVehicle;
 
 MapPointsPlot = pcplayer(xLim, yLim, zLim,'MarkerSize', 5);
@@ -52,8 +62,8 @@ arrds.reset();
 tic;
 while hasdata(arrds)
     currData = read(arrds);
-    currCamLocation = currData.Data_locationCamera;
-    currOriCam = currData.Data_orientationCam;
+    currCamLocation = currData.locationCamera;
+    currOriCam = currData.orientationCamera;
 %     currVehLocation = currData.locationVehicle;
 %     currOriVehicle = currData.orientationVehicle;
 
@@ -66,8 +76,8 @@ while hasdata(arrds)
     cameraAbsolutePose = rigid3d(cameraR',trajectory);
     if mod(size(refPath,1),100)==1
         plotCamera('AbsolutePose',cameraAbsolutePose,...
-            'Parent', MapPointsPlot.Axes, 'Size', 1,...
-            'Color',[0.2,0.7,0.3],'Opacity',0.5,'AxesVisible',true);
+            'Parent', MapPointsPlot.Axes, 'Size', 1.2,...
+            'Color',[0.2,0.7,0.3],'Opacity',0.3,'AxesVisible',true);
     end
     % Update the camera trajectory
     set(gTrajectory, 'XData', refPath(:,1), 'YData', ...
@@ -75,6 +85,10 @@ while hasdata(arrds)
      drawnow limitrate
 end
 toc
+allDistances = sum(vecnorm(diff(simData.locationCamera),2,2));
+aveSpeed = allDistances/seconds(simData.Time(end));
+titleStr = sprintf("Distance:%.2f m,aveSpeed:%.2f m/s",allDistances,aveSpeed);
+title(MapPointsPlot.Axes,titleStr);
 legend(MapPointsPlot.Axes,'TextColor','white','Location','northeast');
 
 %% write to csv
@@ -83,6 +97,7 @@ imds = imageDatastore(dstRoot);
 level = wildcardPattern + filesep;
 pat = asManyOfPattern(level);
 simData.image = extractAfter(imds.Files,pat);
+simData = movevars(simData,"image","Before","locationCamera");
 writetimetable(simData,fullfile(dstRoot,filename))
 
 %% 另一种四元数保存方式

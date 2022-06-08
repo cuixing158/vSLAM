@@ -1,9 +1,10 @@
 # Matlab中旋转矩阵和若干函数理解说明
-崔星星 2022.6.2
+崔星星 2022.6.2 记录
+2022.6.8 修改
 
->matlab中众多工具箱都有涉及到旋转矩阵，欧拉角，四元数等的转换，但目前最新版本2022a中各个工具箱还不完全统一明确，这里以**通用习惯**进行表述一些常用的操作。
+>matlab中众多工具箱都有涉及到旋转矩阵，欧拉角，四元数等的转换，但目前最新版本2022a中各个工具箱（CV,Automated Driving,Navigation,Robotics System,Sensor Fusion and Tracking等）还不完全统一明确（特别是CV相对其他工具箱），这里以**通用习惯**进行表述一些常用的操作,对官方文档进行进一步的**澄清扩充**，以便方便各位同事有效使用，更多详细延申看文后reference。
 
-本文默认都是以右手坐标系，extrinsic rotation/point rotation，点坐标以列向量形式在旋转矩阵右侧相乘的惯例进行，除非特别说明。根据`rotx`函数文档，点绕x,y,z坐标轴旋转对应的旋转矩阵分别如下：<br>
+本文默认都是以右手坐标系，[extrinsic rotation](https://en.wikipedia.org/wiki/Euler_angles#Conventions_by_extrinsic_rotations)/[point rotation](https://ww2.mathworks.cn/help/driving/ref/quaternion.html?s_tid=doc_ta#mw_9c239f4e-9f4d-4cc5-9f00-ed1f59f90c4f)，点坐标以列向量形式在旋转矩阵右侧相乘的惯例进行，除非特别说明。根据`rotx`函数文档，点绕x,y,z坐标轴旋转对应的旋转矩阵分别如下：<br>
 ![rotation matrix](images/Rotation_matrix.png)
 比如空间点$p1(x_1,y_1,z_1)$绕z轴旋转$\theta$度得到$p2(x_2,y_2,z_2)$,则数学上表示为：<br>
 
@@ -22,10 +23,11 @@ z_1
 \end{array}\right\rbrack$$
 
 
-若空间点$p1(x_1,y_1,z_1)$绕多个轴旋转，比如先绕x轴旋转$\alpha$，然后绕y轴旋转$\beta$,最后绕z轴旋转$\gamma$得到$p2(x_2,y_2,z_2)$,则公式应为：$p2 = R_z(\gamma)*R_y(\beta)*R_x(\alpha)*p1$，注意它们顺序依次向左写，不能搞反！
+若空间点$p1(x_1,y_1,z_1)$绕多个轴旋转，比如先绕x轴旋转$\alpha$，然后绕y轴旋转$\beta$,最后绕z轴旋转$\gamma$得到$p2(x_2,y_2,z_2)$,则公式应为：$p2 = R_z(\gamma)*R_y(\beta)*R_x(\alpha)*p1$，注意它们顺序**依次向左写，不能搞反！**
 
-## eul2rotm函数原理
-`eul2rotm`同`rotx`,`roty`,`rotz`函数得到的旋转矩阵形式与上述是统一一致的，但要注意顺序问题，官方文档并未阐述清晰，比如`eul2rotm`函数第二个参数'sequence'指定顺序为'XYZ'，则代表$rotx(\theta)*roty(\theta)*rotz(\theta)$,但我们很容易错误理解为点先绕x轴旋转，其次绕y轴旋转，最后绕z轴旋转的旋转矩阵。比如下面示例展示出其原理，`myR1`和`myR2`数值上相等。
+**由于曾总提供的姿态数据是以欧拉角形式给出的，而在绘制三维姿态朝向的时候要借助使用ridid3d这个类函数对象来呈现空间中的相机姿态（其他语言类似），以便验证我们的理解是否正确，而这个函数对象包含旋转矩阵部分，需要先把欧拉角转换为旋转矩阵，再构建rigid3d姿态绘图显示，故下面主要澄清欧拉角转换为旋转矩阵eul2rotm，姿态rigid3d两个函数作说明。**
+## eul2rotm函数
+`eul2rotm`同上述`rotx`,`roty`,`rotz`函数得到的旋转矩阵形式与上述是统一一致的，但要注意顺序问题，官方文档并未完全阐述清晰（[TMW公司已经意识到这个问题，正在着手积极解决1](https://ww2.mathworks.cn/matlabcentral/answers/1716235-why-point-correspondence-to-rotation-matrix-calculation-is-not-my-expected#comment_2151905)），比如`eul2rotm`函数第二个参数'sequence'指定顺序为'XYZ'，则代表$rotx(\alpha)*roty(\beta)*rotz(\gamma)$,但我们很容易错误理解为点先绕x轴旋转，其次绕y轴旋转，最后绕z轴旋转的旋转矩阵。比如下面示例展示出其原理，`myR1`和`myR2`数值上相等。
 ```matlab
 thetaRadians = rand(1,3);
 thetaDegrees = rad2deg(thetaRadians);
@@ -42,9 +44,95 @@ err =
 ```
 
 ## rigid3d 函数
-computer vision toolbox与其他工具箱旋转矩阵表述不同，比如这个rigid3d函数，在vSLAM中表示姿态（Location和Orientation），用的非常广泛。该函数对象包含2个属性，即RotationMatrix和Translation,分别对应Orientation和Location，它们数组大小必须是3×3、1×3。注意：这个rigid3d函数的旋转矩阵与上述**通用理解形式**互为转置关系,其齐次矩阵T为4×4的矩阵，形式如下：
+computer vision toolbox与其他工具箱旋转矩阵表述略有不同,与上述旋转矩阵互为转置（[TMW公司也已经意识到这个问题，正在着手积极解决2](https://ww2.mathworks.cn/matlabcentral/answers/1720045-how-to-get-the-relative-camera-pose-to-another-camera-pose#answer_964925)），比如这个rigid3d函数在vSLAM中用的非常广泛，表示姿态（Location和Orientation），其有两层含义：**绝对姿态，转换姿态（或叫变换姿态/相对姿态）**，注意在不同的场合条件下有不同的含义！该函数对象包含2个属性，即RotationMatrix和Translation,分别对应Orientation和Location，它们数组大小必须是3×3、1×3。注意：这个rigid3d函数的旋转矩阵$R_{3\times 3}$与上述**通用理解形式互为转置关系**,其齐次矩阵(homogeneous transformation matrix)T为4×4的矩阵，形式如下：
 $$T=\left\lbrack \begin{array}{cc}
 R_{3\times 3}  & 0\\
-t_{1\times 3}  & 1
+T_{1\times 3}  & 1
 \end{array}\right\rbrack$$
-若涉及多个连续刚性变换，则坐标变换应该依次右乘，齐次矩阵T可同时进行旋转和平移变换，方便计算。
+若涉及多个连续刚性变换，则坐标变换应该**依次右乘**，齐次矩阵T可同时进行旋转和平移变换，方便计算。比如三维场景下有camera1、camera2、camera3的绝对姿态用齐次矩阵表示分别为$T1(R1,t1)、T2(R2,t2)、T3(R3,t3)$，设camera1到camera2的转换齐次矩阵为T12，camera2到camera3的齐次转换矩阵为T23。其中T1有如下形式：<br>
+$$T1=\left\lbrack \begin{array}{c}
+R_1 & 0\\
+t1  & 1
+\end{array}\right\rbrack=\left\lbrack \begin{array}{cc} 
+R_{11}  & R_{12}  & R_{13} & 0\\
+R_{21}  & R_{22}  & R_{23} & 0\\
+R_{31}  & R_{32}  & R_{33} & 0\\
+t_x  & t_y  & t_z  & 1
+\end{array}\right\rbrack$$
+其余T2,T3类推。则$T3=T1*T12*T23$，其中T12有如下形式：<br>
+$$T12=\left\lbrack \begin{array}{c}
+R_1* R_2' & 0\\
+(t1-t2)* R_2'  & 1
+\end{array}\right\rbrack$$,其余相对变换类推。
+
+## 姿态绘图
+若提供一个绝对姿态$T(R,t)$的对象rigid3d，就可以绘制一个**确定的**相机姿态。注意matlab中规定相机默认姿态如下，符合我们通用想法：
+
+```matlab
+p1 = rigid3d(); % 默认构造函数，其中R=[1,0,0;0,1,0;0,0,1], t = [0,0,0];
+cam = plotCamera(AbsolutePose=p1,Opacity=0,AxesVisible=true);
+grid on; xlabel('x');ylabel('y');zlabel('z')
+```
+![cameraP](images/cameraP.jpg)
+默认初始姿态为世界坐标系姿态，即**相机物理坐标系与世界坐标系重合！**
+下面3个示例依次循序渐进，逐步趋向曾总提供的表格数据集，达到“既想即所得”效果，只**讨论相机如何通过欧拉角变换朝向，位置均为世界坐标系原点为准！**
+- Example1
+若只提供一组欧拉角$(0,0,-\pi)$，指定顺序为'XYZ',则从Z轴正方向看，相机顺时针旋转$\pi$弧度/180°，则相机姿态如下所示：
+```matlab
+e1 = [0,0,-pi]; % [roll,pitch,yaw]，弧度
+R1 = eul2rotm(e1,'XYZ');% or use R1 = rotx(a)*roty(b)*rotz(c)，注意输入参数为角度,先绕Z，其次绕Y，最后绕X轴！
+t1=[0,0,0];
+P1 = rigid3d(R1',t1);
+cam = plotCamera(AbsolutePose=P1,Opacity=0,AxesVisible=true);
+grid on; xlabel('x');ylabel('y');zlabel('z')
+```
+![cameraP](images/cameraP1.jpg)
+图像完全符合我们预期。
+- Example2
+若提供一组欧拉角$(0,-\pi/6,-\pi)$，指定顺序依旧为'XYZ',则从z轴正方向看，相机先顺时针旋转$\pi$弧度(180°)，然后从y轴正方向看，相机顺时针旋转$pi/6$弧度(30°),则相机姿态如下所示：
+```matlab
+e2 = [0,-pi/6,-pi];
+R2 = eul2rotm(e2,'XYZ');% or use R2 = rotx(a)*roty(b)*rotz(c)，注意输入参数为角度,先绕Z，其次绕Y，最后绕X轴！
+t2=[0,0,0];
+P2 = rigid3d(R2',t2);
+cam = plotCamera(AbsolutePose=P2,Opacity=0,AxesVisible=true);
+grid on; xlabel('x');ylabel('y');zlabel('z');axis equal;
+```
+![cameraP](images/cameraP2.jpg)
+图像完全符合我们预期,但**注意相机物理坐标系（黑色轴）轴的倾斜方向。**
+- Example3
+以上2个示例前提条件是相机初始姿态方向均为世界坐标系默认朝向一致，但这次以曾总数据初始相机姿态朝向为准：相机物理坐标系$Z_c$轴朝向世界坐标系x轴,$Y_c$朝向世界坐标系-z轴，$X_c$朝向世界坐标系-y轴。绘制的初始姿态应该为：
+```matlab
+e3 = [0,pi/2,-pi/2];
+R3 = eul2rotm(e3,'XYZ');% or use R2 = rotx(a)*roty(b)*rotz(c)，注意输入参数为角度,先绕Z，其次绕Y，最后绕X轴！
+t3=[0,0,0];
+P3 = rigid3d(R3',t3);
+cam = plotCamera(AbsolutePose=P3,Opacity=0,AxesVisible=true);
+grid on; xlabel('x');ylabel('y');zlabel('z');axis equal;title('曾总数据集相机初始姿态基准')
+```
+![cameraP](images/cameraP_init.jpg)
+图像完全符合我们预期,相机初始的物理坐标系**曾总基准（黑色轴）方向。**
+
+若依旧提供一组欧拉角$(0,-\pi/6,-\pi)$，指定顺序依旧为'XYZ',但**注意相机初始姿态方向为上述曾总的基准方向**，则从z轴正方向看，相机先顺时针旋转$\pi$弧度(180°)，然后从y轴正方向看，相机顺时针旋转$pi/6$弧度(30°),则相机姿态如下所示：
+```matlab
+e4 = [0,-pi/6,-pi]; % 数据表格3个欧拉角[roll,pitch,yaw]，弧度
+e_base = [0,pi/2,-pi/2];% 上述曾总的相机物理坐标系基准方向
+R4 = eul2rotm(e4,'XYZ');% or use R4 = rotx(a)*roty(b)*rotz(c)，注意输入参数为角度,先绕Z，其次绕Y，最后绕X轴！
+R_base = eul2rotm(e_base,'XYZ');
+t4=[0,0,0];
+RotationM_base = R4*R_base; % 通用旋转矩阵在右边相乘形式
+P4 = rigid3d(RotationM_base',t4);
+cam = plotCamera(AbsolutePose=P4,Opacity=0,AxesVisible=true);
+grid on; xlabel('x');ylabel('y');zlabel('z');axis equal;title('曾总数据集相机姿态绘图')
+```
+![cameraP](images/cameraP_zeng.jpg)
+图像完全符合我们预期,特别的当pitch角为负时候，相机是倾斜向下的，由于UE软件默认左手坐标系所致，pitch角应当取反，此时相机是倾斜朝上的，符合轨迹逐渐向上爬坡的迹象。
+
+## Reference
+1. [Euler angles](https://en.wikipedia.org/wiki/Euler_angles#Conventions_by_extrinsic_rotation)
+1. [Coordinate Systems in Automated Driving Toolbox](https://ww2.mathworks.cn/help/driving/ug/coordinate-systems.html)
+1. [Rotations, Orientations, and Quaternions for Automated Driving](https://ww2.mathworks.cn/help/driving/ug/rotations-using-quaternions-in-automated-driving.html)
+
+
+
+

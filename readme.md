@@ -15,8 +15,9 @@
 1. 2022.5.22,尺度由全局地图尺度改为累计尺度中值进行处理，地图更新实时加入Ground Truth来对比。
 1. 2022.5.30,坐标系统,roll,pitch,yaw规则均以参考2和3中的定义进行。
 1. 2022.6.1, 曾总新数据集"20220527"下在拐弯（90°）出后出现较大漂移偏差(135°)方向。
-1. 2022.6.2, 曾总数据集“20220527”在隔帧选取的情况下，算法误差迅速减小，位置误差约2m/100m.
-![orb-map](images/vSLAM.gif)<br>
+1. 2022.6.2, 曾总数据集“20220527”在隔帧选取的情况下+动态尺度范围下，算法误差迅速减小，位置误差约1m/100m.
+![orb-map](images/sim20220607.jpg)<br>
+1. 2022.6.7，开始研究定位算法，比如典型的Monte Carlo Locallization.
 
 ## 相机标定内外参
 - **相机内参**
@@ -48,6 +49,7 @@
 1. 如何理解各个map point的景深？即景深范围与orb尺度的关系？
 1. helperTrackLastKeyFrame.m文件函数中estimateWorldCameraPose使用这个来获取当前相机姿态，能否使用relativeCameraPose函数来代替（平移向量归一化处理）？
 1. 为何要剔除mapPoint/landmarks？难道是为了减少存储量还是计算量？
+1. 在实施定位步骤之前，建的地图以什么形式保存，保存哪些关键信息？
 
 ## Evaluation
 对评估的轨迹路径和真值路径指标为ape(absolute pose error)和rpe(relative pose error)
@@ -56,4 +58,5 @@
 1. [Useful tools for the RGB-D benchmark](https://vision.in.tum.de/data/datasets/rgbd-dataset/tools)<br>
 1. [Coordinate Systems in Automated Driving Toolbox](https://ww2.mathworks.cn/help/driving/ug/coordinate-systems.html)<br>
 1. [Coordinate Systems for Unreal Engine Simulation in Automated Driving Toolbox](https://ww2.mathworks.cn/help/driving/ug/coordinate-systems-for-3d-simulation-in-automated-driving-toolbox.html)
+1. [Localization Algorithms](https://ww2.mathworks.cn/help/nav/localization-algorithms.html)
 1. [导航系统中里程计研究综述](https://cloud.tencent.com/developer/article/1812407)

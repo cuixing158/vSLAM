@@ -1,5 +1,5 @@
 %% 使用曾总的图像做vSLAM
-parkingLotRoot = "E:\AllDataAndModels\underParkingLotImages20220527";%"H:\dataSets\vSLAM\parkingLotImages";%"E:\AllDataAndModels\parkingLotImages";%
+parkingLotRoot = "E:\AllDataAndModels\underParkingLotImages20220606";%"H:\dataSets\vSLAM\parkingLotImages";%"E:\AllDataAndModels\parkingLotImages";%
 validIndexStart = 4;
 imds = imageDatastore(parkingLotRoot);
 imds = subset(imds,validIndexStart:length(imds.Files));
