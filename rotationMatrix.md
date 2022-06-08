@@ -44,7 +44,7 @@ err =
 ```
 
 ## rigid3d 函数
-computer vision toolbox与其他工具箱旋转矩阵表述略有不同,与上述旋转矩阵互为转置（[TMW公司也已经意识到这个问题，正在着手积极解决2](https://ww2.mathworks.cn/matlabcentral/answers/1720045-how-to-get-the-relative-camera-pose-to-another-camera-pose#answer_964925)），比如这个rigid3d函数在vSLAM中用的非常广泛，表示姿态（Location和Orientation），其有两层含义：**绝对姿态，转换姿态（或叫变换姿态/相对姿态）**，注意在不同的场合条件下有不同的含义！该函数对象包含2个属性，即RotationMatrix和Translation,分别对应Orientation和Location，它们数组大小必须是3×3、1×3。注意：这个rigid3d函数的旋转矩阵$R_{3\times 3}$与上述**通用理解形式互为转置关系**,其齐次矩阵(homogeneous transformation matrix)T为4×4的矩阵，形式如下：
+computer vision toolbox与其他工具箱旋转矩阵表述略有不同,与上述旋转矩阵互为转置（[TMW公司也已经意识到这个问题，正在着手积极解决2](https://ww2.mathworks.cn/matlabcentral/answers/1720045-how-to-get-the-relative-camera-pose-to-another-camera-pose#answer_964925)），比如这个rigid3d函数在vSLAM中用的非常广泛，表示姿态（Location和Orientation），其有两层含义：**绝对姿态，转换姿态（或叫变换姿态/相对姿态）**，注意在不同的场合条件下有不同的含义！该函数对象包含2个属性，即RotationMatrix和Translation,分别对应Orientation和Location，它们数组大小必须是3×3、1×3。注意：这个rigid3d函数的旋转矩阵$R_{3\times 3}$与上述**通用理解形式互为转置关系**,其齐次矩阵(homogeneous transformation matrix)T为4×4的矩阵，形式如下：<br>
 $$T=\left\lbrack \begin{array}{cc}
 R_{3\times 3}  & 0\\
 T_{1\times 3}  & 1
