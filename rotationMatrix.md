@@ -11,7 +11,8 @@
 </center><br>
 
 比如空间点$p1(x_1,y_1,z_1)$绕z轴旋转$\theta$度得到$p2(x_2,y_2,z_2)$,则数学上表示为：<br>
-$$d=\left\lbrack \begin{array}{c}
+
+$$\left\lbrack \begin{array}{c}
 x_2 \\
 y_2 \\
 z_2 
@@ -69,10 +70,13 @@ t_x  & t_y  & t_z  & 1
 
 
 其余T2,T3类推。则$T3=T1*T12*T23$，其中T12有如下形式：<br>
+
 $$T12=\left\lbrack \begin{array}{c}
 R_1* R_2' & 0\\
 (t1-t2)* R_2'  & 1
 \end{array}\right\rbrack$$,
+
+
 其余相对变换类推。
 
 ## 姿态绘图
