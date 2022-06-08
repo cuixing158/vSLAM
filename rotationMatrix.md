@@ -5,10 +5,9 @@
 >matlab中众多工具箱都有涉及到旋转矩阵，欧拉角，四元数等的转换，但目前最新版本2022a中各个工具箱（CV,Automated Driving,Navigation,Robotics System,Sensor Fusion and Tracking等）还不完全统一明确（特别是CV相对其他工具箱），这里以**通用习惯**进行表述一些常用的操作,对官方文档进行进一步的**澄清扩充**，以便方便各位同事有效使用，更多详细延申看文后reference。
 
 本文默认都是以右手坐标系，欧拉角以[Tait–Bryan angles,extrinsic rotation](https://en.wikipedia.org/wiki/Euler_angles#Conventions_by_extrinsic_rotations)/[point rotation](https://ww2.mathworks.cn/help/driving/ref/quaternion.html?s_tid=doc_ta#mw_9c239f4e-9f4d-4cc5-9f00-ed1f59f90c4f)，点坐标以列向量形式在旋转矩阵右侧相乘的惯例进行，除非特别说明。根据`rotx`函数文档，点绕x,y,z坐标轴旋转对应的旋转矩阵分别如下：<br>
-<center>
-
-![rotation matrix](images/Rotation_matrix.png)
-</center><br>
+<p align="left">
+  <img src="images/Rotation_matrix.png" />
+</p>
 
 比如空间点$p1(x_1,y_1,z_1)$绕z轴旋转$\theta$度得到$p2(x_2,y_2,z_2)$,则数学上表示为：<br>
 
