@@ -69,11 +69,11 @@ t_x  & t_y  & t_z  & 1
 \end{array}\right\rbrack$$
 
 
-其余T2,T3类推。则$T3=T1*T12*T23$，其中T12有如下形式：<br>
+其余T2,T3类推。则$T3=T1\ast T12\ast T23$，其中T12有如下形式：<br>
 
 $$T12=\left\lbrack \begin{array}{c}
-R_1* R_2' & 0\\
-(t1-t2)* R_2'  & 1
+R_1\ast R_2' & 0\\
+(t1-t2)\ast R_2'  & 1
 \end{array}\right\rbrack$$
 
 
