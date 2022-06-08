@@ -5,7 +5,7 @@
 >matlab中众多工具箱都有涉及到旋转矩阵，欧拉角，四元数等的转换，但目前最新版本2022a中各个工具箱（CV,Automated Driving,Navigation,Robotics System,Sensor Fusion and Tracking等）还不完全统一明确（特别是CV相对其他工具箱），这里以**通用习惯**进行表述一些常用的操作,对官方文档进行进一步的**澄清扩充**，以便方便各位同事有效使用，更多详细延申看文后reference。
 
 本文默认都是以右手坐标系，欧拉角以[Tait–Bryan angles,extrinsic rotation](https://en.wikipedia.org/wiki/Euler_angles#Conventions_by_extrinsic_rotations)/[point rotation](https://ww2.mathworks.cn/help/driving/ref/quaternion.html?s_tid=doc_ta#mw_9c239f4e-9f4d-4cc5-9f00-ed1f59f90c4f)，点坐标以列向量形式在旋转矩阵右侧相乘的惯例进行，除非特别说明。根据`rotx`函数文档，点绕x,y,z坐标轴旋转对应的旋转矩阵分别如下：<br>
-![rotation matrix](images/Rotation_matrix.png)
+<center>![rotation matrix](images/Rotation_matrix.png)</center><br>
 比如空间点$p1(x_1,y_1,z_1)$绕z轴旋转$\theta$度得到$p2(x_2,y_2,z_2)$,则数学上表示为：<br>
 
 $$\left\lbrack \begin{array}{c}
@@ -45,11 +45,15 @@ err =
 
 ## rigid3d 函数
 computer vision toolbox与其他工具箱旋转矩阵表述略有不同,与上述旋转矩阵互为转置（[TMW公司也已经意识到这个问题，正在着手积极解决2](https://ww2.mathworks.cn/matlabcentral/answers/1720045-how-to-get-the-relative-camera-pose-to-another-camera-pose#answer_964925)），比如这个rigid3d函数在vSLAM中用的非常广泛，表示姿态（Location和Orientation），其有两层含义：**绝对姿态，转换姿态（或叫变换姿态/相对姿态）**，注意在不同的场合条件下有不同的含义！该函数对象包含2个属性，即RotationMatrix和Translation,分别对应Orientation和Location，它们数组大小必须是3×3、1×3。注意：这个rigid3d函数的旋转矩阵$R_{3\times 3}$与上述**通用理解形式互为转置关系**,其齐次矩阵(homogeneous transformation matrix)T为4×4的矩阵，形式如下：<br>
+
 $$T=\left\lbrack \begin{array}{cc}
 R_{3\times 3}  & 0\\
 T_{1\times 3}  & 1
 \end{array}\right\rbrack$$
+
+
 若涉及多个连续刚性变换，则坐标变换应该**依次右乘**，齐次矩阵T可同时进行旋转和平移变换，方便计算。比如三维场景下有camera1、camera2、camera3的绝对姿态用齐次矩阵表示分别为$T1(R1,t1)、T2(R2,t2)、T3(R3,t3)$，设camera1到camera2的转换齐次矩阵为T12，camera2到camera3的齐次转换矩阵为T23。其中T1有如下形式：<br>
+
 $$T1=\left\lbrack \begin{array}{c}
 R_1 & 0\\
 t1  & 1
@@ -59,21 +63,24 @@ R_{21}  & R_{22}  & R_{23} & 0\\
 R_{31}  & R_{32}  & R_{33} & 0\\
 t_x  & t_y  & t_z  & 1
 \end{array}\right\rbrack$$
+
+
 其余T2,T3类推。则$T3=T1*T12*T23$，其中T12有如下形式：<br>
 $$T12=\left\lbrack \begin{array}{c}
 R_1* R_2' & 0\\
 (t1-t2)* R_2'  & 1
-\end{array}\right\rbrack$$,其余相对变换类推。
+\end{array}\right\rbrack$$,<br>
+其余相对变换类推。
 
 ## 姿态绘图
-若提供一个绝对姿态$T(R,t)$的对象rigid3d，就可以绘制一个**确定的**相机姿态。注意matlab中规定相机默认姿态如下，符合我们通用想法：
+若提供一个绝对姿态$T(R,t)$的对象rigid3d，就可以绘制一个**确定的**相机姿态。注意matlab中规定相机默认姿态如下，符合我们通用想法：<br>
 
 ```matlab
 p1 = rigid3d(); % 默认构造函数，其中R=[1,0,0;0,1,0;0,0,1], t = [0,0,0];
 cam = plotCamera(AbsolutePose=p1,Opacity=0,AxesVisible=true);
 grid on; xlabel('x');ylabel('y');zlabel('z')
 ```
-![cameraP](images/cameraP.jpg)
+<center>![cameraP](images/cameraP.jpg)</center><br>
 默认初始姿态为世界坐标系姿态，即**相机物理坐标系与世界坐标系重合！**
 下面3个示例依次循序渐进，逐步趋向曾总提供的表格数据集，达到“既想即所得”效果，只**讨论相机如何通过欧拉角变换朝向，位置均为世界坐标系原点为准！**
 - Example1
@@ -86,7 +93,7 @@ P1 = rigid3d(R1',t1);
 cam = plotCamera(AbsolutePose=P1,Opacity=0,AxesVisible=true);
 grid on; xlabel('x');ylabel('y');zlabel('z')
 ```
-![cameraP](images/cameraP1.jpg)
+<center>![cameraP](images/cameraP1.jpg)</center><br>
 图像完全符合我们预期。
 - Example2
 若提供一组欧拉角$(0,-\pi/6,-\pi)$，指定顺序依旧为'XYZ',则从z轴正方向看，相机先顺时针旋转$\pi$弧度(180°)，然后从y轴正方向看，相机顺时针旋转$pi/6$弧度(30°),则相机姿态如下所示：
@@ -98,7 +105,7 @@ P2 = rigid3d(R2',t2);
 cam = plotCamera(AbsolutePose=P2,Opacity=0,AxesVisible=true);
 grid on; xlabel('x');ylabel('y');zlabel('z');axis equal;
 ```
-![cameraP](images/cameraP2.jpg)
+<center>![cameraP](images/cameraP2.jpg)</center><br>
 图像完全符合我们预期,但**注意相机物理坐标系（黑色轴）轴的倾斜方向。**
 - Example3
 以上2个示例前提条件是相机初始姿态方向均为世界坐标系默认朝向一致，但这次以曾总数据初始相机姿态朝向为准：相机物理坐标系$Z_c$轴朝向世界坐标系x轴,$Y_c$朝向世界坐标系-z轴，$X_c$朝向世界坐标系-y轴。绘制的初始姿态应该为：
@@ -110,7 +117,7 @@ P3 = rigid3d(R3',t3);
 cam = plotCamera(AbsolutePose=P3,Opacity=0,AxesVisible=true);
 grid on; xlabel('x');ylabel('y');zlabel('z');axis equal;title('曾总数据集相机初始姿态基准')
 ```
-![cameraP](images/cameraP_init.jpg)
+<center>![cameraP](images/cameraP_init.jpg)</center><br>
 图像完全符合我们预期,相机初始的物理坐标系**曾总基准（黑色轴）方向。**
 
 若依旧提供一组欧拉角$(0,-\pi/6,-\pi)$，指定顺序依旧为'XYZ',但**注意相机初始姿态方向为上述曾总的基准方向**，则从z轴正方向看，相机先顺时针旋转$\pi$弧度(180°)，然后从y轴正方向看，相机顺时针旋转$pi/6$弧度(30°),则相机姿态如下所示：
@@ -125,7 +132,7 @@ P4 = rigid3d(RotationM_base',t4);
 cam = plotCamera(AbsolutePose=P4,Opacity=0,AxesVisible=true);
 grid on; xlabel('x');ylabel('y');zlabel('z');axis equal;title('曾总数据集相机姿态绘图')
 ```
-![cameraP](images/cameraP_zeng.jpg)
+<center>![cameraP](images/cameraP_zeng.jpg)</center><br>
 图像完全符合我们预期,特别的当pitch角为负时候，相机是倾斜向下的。由于[UE软件默认左手坐标系所致](https://ww2.mathworks.cn/help/driving/ug/coordinate-systems-for-3d-simulation-in-automated-driving-toolbox.html)，据说UE中的y坐标已经被matlab默认取反了，但对应的pitch角还没取反，故需要手动取反，取反后pitch变为正的，此时相机/车辆姿态方向符合轨迹逐渐向上爬坡的迹象。
 
 ## Reference
