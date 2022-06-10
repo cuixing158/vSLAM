@@ -18,6 +18,7 @@
 1. 2022.6.2, 曾总数据集“20220527”在隔帧选取的情况下+动态尺度范围下，算法误差迅速减小，位置误差约1m/100m.
 ![orb-map](images/sim20220607.jpg)<br>
 1. 2022.6.7，开始研究定位算法，比如典型的Monte Carlo Locallization.
+1. 2022.6.10,Monte Carlo Locallization适用于已知occupancy map地图，scan ranged data和odometry sensor data. 待温故bag of visual words，看如何应用到记忆泊车。
 
 ## 相机标定内外参
 - **相机内参**
