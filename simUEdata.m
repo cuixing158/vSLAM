@@ -1,4 +1,4 @@
-%% 用于曾总UE里面仿真场景数据的解析
+%% 用于曾总UE里面仿真场景数据的解析,实际上是外参欧拉角形式
 
 %% 自定义数据
 simoutFile = "\\yunpan02\豪恩汽电\豪恩汽电研发中心\临时文件夹\simout\20220606\simout100mNormalLight20220606.mat";
@@ -10,6 +10,14 @@ zLim = [0,7];
 if ~isfolder(dstRoot)
     mkdir(dstRoot)
 end
+% 相机系数
+calibration_time = "06/13/22 14:12:21";
+image_width = 1920;
+image_height = 1080;
+cameraIntrinsics = [1046,0,image_width/2-1;
+    0,1046,image_height/2-1;
+    0,0,1];
+k1 = 0;k2 = 0;p1=0;p2 = 0;% opencv 格式
 
 %% decode data
 % images
@@ -37,8 +45,8 @@ oriCam = squeeze(simData.orientationCamera);% n*3
 oriVehicle = squeeze(simData.orientationVehicle);% n*3
 simData.orientationCamera = oriCam;
 simData.orientationVehicle = oriVehicle;
-simData.orientationCamera(:,2) = -oriCam(:,2);% 注意数据有"问题"，可能是UE软件左手坐标系导致
-simData.orientationVehicle(:,2) = -oriVehicle(:,2);% 注意数据有"问题"，可能是UE软件左手坐标系导致
+% simData.orientationCamera(:,2) = -oriCam(:,2);% 注意数据有"问题"，可能是UE软件左手坐标系导致
+% simData.orientationVehicle(:,2) = -oriVehicle(:,2);% 注意数据有"问题"，可能是UE软件左手坐标系导致
 
 % simData = decodeSimUE(simoutFile);
 arrds = arrayDatastore(simData,ReadSize=1, OutputType="same");
@@ -55,9 +63,12 @@ hold(MapPointsPlot.Axes,'on');
 trajectory = reshape(currCamLocation,[],3);
 gTrajectory = plot3(MapPointsPlot.Axes, trajectory(:,1), trajectory(:,2), ...
     1, 'r.-', 'LineWidth', 2 , 'DisplayName', 'ground Truth trajectory');
-refPath = [];
+
 
 %% main loop
+refPath = [];
+cameraExtrinsics = [];% numImgs*16,齐次矩阵按行展开形式
+image_count = 0;
 arrds.reset();
 tic;
 while hasdata(arrds)
@@ -70,10 +81,15 @@ while hasdata(arrds)
     % update plot
     trajectory = reshape(currCamLocation,[],3);
     eular = reshape(currOriCam,[],3);
+    eular = double(rad2deg(eular));
     refPath = [refPath;trajectory];
-    rotMatrix = eul2rotm(eular,'XYZ');
+    rotMatrix = rotz(eular(3))*roty(eular(2))*rotx(eular(1));
     cameraR = rotMatrix*roty(90)*rotz(-90); % 注意顺序和通用旋转矩阵乘法format
-    cameraAbsolutePose = rigid3d(cameraR',trajectory);
+    cameraRT = [cameraR,trajectory';0,0,0,1]; % 通用齐次形式
+    cameraRT = cameraRT';
+    cameraOneColum = cameraRT(:);% 16*1
+    cameraExtrinsics = [cameraExtrinsics;cameraOneColum'];
+    cameraAbsolutePose = rigid3d(cameraRT);
     if mod(size(refPath,1),100)==1
         plotCamera('AbsolutePose',cameraAbsolutePose,...
             'Parent', MapPointsPlot.Axes, 'Size', 1.2,...
@@ -83,6 +99,7 @@ while hasdata(arrds)
     set(gTrajectory, 'XData', refPath(:,1), 'YData', ...
         refPath(:,2), 'ZData', refPath(:,3));
      drawnow limitrate
+     image_count = image_count+1;
 end
 toc
 allDistances = sum(vecnorm(diff(simData.locationCamera),2,2));
@@ -109,6 +126,10 @@ writetimetable(simData,fullfile(dstRoot,filename))
 % simData.orientationCamera = flip(q_cam,2);
 % simData.orientationVehicle = flip(q_vehicle,2);
 % writetimetable(simData,fullfile(dstRoot,filename))
+
+%% 齐次矩阵，以yml格式保存
+% 先导出csv，再opencv c++读取保存为yml格式
+writematrix(cameraExtrinsics,'cameraExtrinsics.csv');
 
 %% support functions
 function simData = decodeSimUE(simoutFile)

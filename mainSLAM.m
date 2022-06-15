@@ -407,7 +407,8 @@ for i = 1:height(gTruthData)
     currLocations = gTruthData{i,3:5};% 以车载摄像头位置为基准
     gTruth(i).Translation = currLocations;
     currEular = gTruthData{i,6:8}; % 曾总角度顺序依次XYZ 
-    postRotationMat  = eul2rotm(currEular,'XYZ')*roty(90)*rotz(-90);% 相机默认开始朝向为Z轴正向
+    eularDegree = double(rad2deg(currEular));
+    postRotationMat  = rotz(eularDegree(3))*roty(eularDegree(2))*rotx(eularDegree(1))*roty(90)*rotz(-90);% 相机默认开始朝向为Z轴正向
     gTruth(i).Rotation = postRotationMat';
 end
 end

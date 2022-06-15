@@ -112,17 +112,6 @@ classdef helperVisualizeSceneAndTrajectory < handle
             drawnow limitrate
         end
         
-        function plotOptimizedTrajectory(obj, poses)
-            
-            % Delete the camera plot
-            delete(obj.CameraPlot);
-            
-            % Plot the optimized trajectory
-            trans = vertcat(poses.AbsolutePose.Translation);
-            obj.OptimizedTrajectory = plot3(obj.Axes, trans(:, 1), trans(:, 2), trans(:, 3), 'm', ...
-                'LineWidth', 2, 'DisplayName', 'Optimized trajectory');
-        end
-        
         function showLegend(obj)
             % Add a legend to the axes
             hLegend = legend(obj.Axes, 'Location',  'northwest', ...

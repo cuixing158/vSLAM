@@ -155,7 +155,7 @@ grid on; xlabel('x');ylabel('y');zlabel('z');axis equal;title('曾总数据集�
   <img src="images/cameraP_zeng.jpg" />
 </p>
 
-图像完全符合我们预期,特别的当pitch角为负时候，相机是倾斜向下的。由于[UE软件默认左手坐标系所致](https://ww2.mathworks.cn/help/driving/ug/coordinate-systems-for-3d-simulation-in-automated-driving-toolbox.html)，据说UE中的y坐标已经被matlab默认取反了，但对应的pitch角还没取反，故需要手动取反，取反后pitch变为正的，此时相机/车辆姿态方向符合轨迹逐渐向上爬坡的迹象。
+图像完全符合我们预期,特别的当pitch角为负时候，相机是倾斜向下的。
 
 ## Reference
 1. [Euler angles](https://en.wikipedia.org/wiki/Euler_angles#Conventions_by_extrinsic_rotation)
