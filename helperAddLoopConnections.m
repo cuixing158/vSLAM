@@ -26,11 +26,11 @@ for k = 1 : numCandidates
     indexPairs = matchFeatures(binaryFeatures(validFeatures1), binaryFeatures(validFeatures2), ...
         'Unique', true, 'MaxRatio', 0.9, 'MatchThreshold', 40);
     
-    % Orientation consistency check
+    % Orientation consistency check,2022.6.16分析：为何要加入这个方向角约束？方向角约束是否
     orientation1 = validPoints1.Orientation(indexPairs(:,1));
     orientation2 = validPoints2.Orientation(indexPairs(:,2));
-    [N, ~, bin] = histcounts(abs(orientation1 - orientation2), 0:pi/30:2*pi);
-    [~, ia] = maxk(N, 3); % Select the top 3 bins
+    [N, ~, bin] = histcounts(abs(orientation1 - orientation2), 0:pi/30:2*pi);% 这里间隔要取合适，否在得到只有前3个匹配
+    [~, ia] = maxk(N, 3); % Select the top 3 bins，3个集中的峰值，返回峰值序号
     isConsistent = ismember(bin, ia);
 
     indexPairs = indexPairs(isConsistent, :);

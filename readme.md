@@ -19,6 +19,7 @@
 ![orb-map](images/sim20220607.jpg)<br>
 1. 2022.6.7，开始研究定位算法，比如典型的Monte Carlo Locallization.
 1. 2022.6.10,Monte Carlo Locallization适用于已知occupancy map地图，scan ranged data和odometry sensor data. 待温故bag of visual words，看如何应用到记忆泊车。
+1. 2022.6.16,待加入基于bagOfFeatures的场景识别,看看优化图的效果。
 
 ## 相机标定内外参
 - **相机内参**
