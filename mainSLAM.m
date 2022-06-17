@@ -176,6 +176,24 @@ mapPlot       = visualizeSceneAndTrajectory(vSetKeyFrames, mapPointSet,currGTrut
 % Show legend
 showLegend(mapPlot);
 
+%% Initialize Place Recognition Database
+
+% Load the bag of features data created offline
+placeRecDatabase = fullfile(parkingLotRoot,"bagOfFeaturesDataSLAM.mat");
+if isfile(placeRecDatabase)
+  load(placeRecDatabase);
+else
+    bofData = bagOfFeatures(imds,CustomExtractor=@helperORBFeatureExtractorFunction,...
+    TreeProperties=[5,10]);
+    save(placeRecDatabase,'bofData');
+end
+
+% Initialize the place recognition database
+loopDatabase    = invertedImageIndex(bofData, "SaveFeatureLocations", false);
+
+% Add features of the first two key frames to the database
+addImageFeatures(loopDatabase, preFeatures, preViewId);
+addImageFeatures(loopDatabase, currFeatures, currViewId);
 
 %% Tracking
 % The tracking process is performed using every frame and determines when to 
@@ -266,12 +284,71 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
     t2 = toc(t1);
     fprintf('updatePlot take time:%.2f s.\n',t2);
 
+    %% Loop Closure
+    % Initialize the loop closure database
+
+    % Check loop closure after some key frames have been created    
+    if currKeyFrameId > 100
+        
+        % Detect possible loop closure key frame candidates
+        loopEdgeNumMatches = 40;
+        [isDetected, validLoopCandidates] = helperCheckLoopClosure(vSetKeyFrames, currKeyFrameId, ...
+            loopDatabase, currI, loopEdgeNumMatches);
+        
+        if isDetected 
+            % Add loop closure connections
+            isStereo = false;
+            [mapPointSet, vSetKeyFrames, loopClosureEdge] = helperAddLoopConnections(...
+                mapPointSet, vSetKeyFrames, validLoopCandidates, ...
+                currKeyFrameId, currFeatures, currPoints, loopEdgeNumMatches, isStereo);
+            isLoopClosed = ~isempty(loopClosureEdge);
+        end
+    end
+    
+    % If no loop closure is detected, add current features into the database
+    if ~isLoopClosed
+        addImageFeatures(loopDatabase,  currFeatures, currKeyFrameId);
+    end
+
+    %% update index
+
     % Initialize the loop closure database
     % Update IDs and indices
     lastKeyFrameId  = currKeyFrameId;
     lastKeyFrameIdx = currFrameIdx;
     currFrameIdx  = currFrameIdx + 1;
 end % End of main loop
+
+if ~isLoopClosed
+    disp('Loop closure cannot be found');
+    optimizedPoses = [];
+    return
+end
+
+% Create a similarity pose graph from the key frames set
+G = createPoseGraph(vSetKeyFrames);
+
+% Remove weak edges and keep loop closure edges
+EG = rmedge(G, find(G.Edges.Weight < minNumMatches & ...
+    ~ismember(G.Edges.EndNodes, loopClosureEdge, 'rows')));
+
+% Optimize the similarity pose graph
+optimG = optimizePoseGraph(EG, 'g2o-levenberg-marquardt');
+optimizedPoses = optimG.Nodes(:, 1:2);
+
+% Update the view poses
+vSetKeyFramesOptim = updateView(vSetKeyFrames, optimizedPoses);
+
+% Update map points after optimizing the poses
+mapPointSet = helperUpdateGlobalMap(mapPointSet, directionAndDepth, ...
+    vSetKeyFrames, vSetKeyFramesOptim, optimG.Nodes.Scale);
+
+keyFrameIds  = [keyFrameIds; currFrameIdx]; %#ok<AGROW>
+currGTruths = gTruth(keyFrameIds);
+updatePlot(mapPlot, vSetKeyFrames, mapPointSet,currGTruths);
+
+% Plot the optimized camera trajectory
+plotOptimizedTrajectory(mapPlot, optimizedPoses)
 
 % Show legend
 showLegend(mapPlot);

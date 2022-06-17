@@ -5,7 +5,7 @@ imgsDir = "E:\AllDataAndModels\underParkingLotImages20220606";
 imds = imageDatastore(imgsDir);
 imds = subset(imds,4:length(imds.Files));
 bag = bagOfFeatures(imds,CustomExtractor=@helperORBFeatureExtractorFunction,...
-    TreeProperties=[5,10])
+    TreeProperties=[5,10]);
 
 %% 把地下停车场视频打散成图片，看colmap库重建的表现
 function decodeVideo(videoRootDir,saveImgs)
