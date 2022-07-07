@@ -42,7 +42,7 @@ classdef helperVisualizeMatchedFeatures < handle
             obj.Image.CData   = I;
             obj.Feature.XData = locations(:,1);
             obj.Feature.YData = locations(:,2);
-%             drawnow limitrate
+            drawnow limitrate
         end
     end
 end

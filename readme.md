@@ -20,6 +20,8 @@
 1. 2022.6.7，开始研究定位算法，比如典型的Monte Carlo Locallization.
 1. 2022.6.10,Monte Carlo Locallization适用于已知occupancy map地图，scan ranged data和odometry sensor data. 待温故bag of visual words，看如何应用到记忆泊车。
 1. 2022.6.16,待加入基于bagOfFeatures的场景识别,看看优化图的效果。
+1. 2022.6.21 研究了鱼眼镜头根据矫正表去畸变的过程，完成了C++和Matlab的实现。留下的问题：一维插值如何使用C++高效的实现（插值点远大于样本点），要求类似matlab函数interp1一样高效。
+1. 2022.6.29 受曾总指示，着手以前同事的2D建图，看如何融于到目前郭倩，徐庆华的3D SLAM中来。
 
 ## 相机标定内外参
 - **相机内参**

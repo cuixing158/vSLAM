@@ -138,7 +138,7 @@ classdef visualizeSceneAndTrajectory < handle
             % Update the current camera pose since the first camera is fixed
             obj.CameraPlot.AbsolutePose = currPose.AbsolutePose;
             obj.CameraPlot.Label        = num2str(currPose.ViewId);
-            if mod(size(estiTrajectory,1),10)==1
+            if mod(size(estiTrajectory,1),100)==1
                 camSize = 0.1;
                 if length(cumGTruth)>1
                     camSize = 1;
