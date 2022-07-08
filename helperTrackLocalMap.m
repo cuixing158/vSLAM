@@ -52,15 +52,15 @@ newMapPointIdx = setdiff(localPointsIndices, mapPointIdx, 'stable');
 if isempty(newMapPointIdx)
     newMapPointIdx = mapPointIdx;
 end
-localFeatures  = getFeatures(directionAndDepth, vSetKeyFrames.Views, newMapPointIdx); 
 [projectedPoints, inlierIndex, predictedScales, viewAngles] = removeOutlierMapPoints(mapPoints, ...
     directionAndDepth, currPose, intrinsics, newMapPointIdx, scaleFactor, numLevels);
+localFeatures  = getFeatures(directionAndDepth, vSetKeyFrames.Views, newMapPointIdx); 
 
-newMapPointIdx = newMapPointIdx(inlierIndex);
-localFeatures  = localFeatures(inlierIndex,:);
+newMapPointIdx = newMapPointIdx(inlierIndex);% 局部地图非当前视图看到的mappoints点索引
+localFeatures  = localFeatures(inlierIndex,:);% 局部地图非当前视图看到的mappoints点特征
 
 unmatchedfeatureIdx = setdiff(cast((1:size( currFeatures.Features, 1)).', 'uint32'), ...
-    featureIdx,'stable');
+    featureIdx,'stable');% 当前视图未参与匹配的特征索引
 unmatchedFeatures   = currFeatures.Features(unmatchedfeatureIdx, :);
 unmatchedValidPoints= currPoints(unmatchedfeatureIdx);
 
@@ -98,9 +98,10 @@ if isKeyFrame
 end
 end
 
+% 以下为本主函数的一些支持函数
 function [refKeyFrameId, localPointsIndices, localKeyFrameIds, numPointsRefKeyFrame] = ...
     updateRefKeyFrameAndLocalPoints(mapPoints, vSetKeyFrames, pointIndices)
-
+% 此函数实际上是为了根据当前观察到的mappoints找出更多的潜在连接局部关键帧，最具代表的关键帧序号，局部点序号，最具代表关键帧的点数量
 % Get key frames K1 that observe map points in the current key frame
 viewIds = findViewsOfWorldPoint(mapPoints, pointIndices);
 K1IDs = vertcat(viewIds{:});
@@ -112,7 +113,7 @@ refKeyFrameId = mode(K1IDs);
 K1IDs = unique(K1IDs);
 localKeyFrameIds = K1IDs;
 
-for i = 1:numel(K1IDs)
+for i = 1:numel(K1IDs)% 找潜在的更多的"连接"局部关键帧序号
     views = connectedViews(vSetKeyFrames, K1IDs(i));
     K2IDs = setdiff(views.ViewId, localKeyFrameIds);
     localKeyFrameIds = [localKeyFrameIds; K2IDs]; %#ok<AGROW>
@@ -129,7 +130,7 @@ end
 end
 
 function features = getFeatures(directionAndDepth, views, mapPointIdx)
-
+% 此函数作用就是完成局部地图中非当前视图的mappoints的"最具代表性特征"（观察到的最多视图对应的orb的特征）
 % Efficiently retrieve features and image points corresponding to map points
 % denoted by mapPointIdx
 allIndices = zeros(1, numel(mapPointIdx));
@@ -175,7 +176,7 @@ end
 function [projectedPoints, inliers, predictedScales, viewAngles] = removeOutlierMapPoints(...
     mapPoints, directionAndDepth, pose, intrinsics, localPointsIndices, scaleFactor, ...
     numLevels)
-
+% 此函数作用是完成局部地图非当前视图的mappoints的排除，排除规则：1，位于图像范围内投影点；2，各mappoints的"代表性方向"与当前视图的角度小于60度；3，各mappoints到当前视图的距离在orb尺度计算范围内
 % 1) Points within the image bounds
 xyzPoints = mapPoints.WorldPoints(localPointsIndices, :);
 tform    = cameraPoseToExtrinsics(pose);
@@ -185,12 +186,12 @@ if isempty(projectedPoints)
     error('Tracking failed. Try inserting new key frames more frequently.')
 end
 
-% 2) Parallax less than 60 degrees
+% 2) Parallax less than 60 degrees,此处阈值60度确定？如何凭经验
 cameraNormVector = [0 0 1] * pose.Rotation';% 相机姿态的单位法向量
 cameraToPoints   = xyzPoints - pose.Translation;
 viewDirection    = directionAndDepth.ViewDirection(localPointsIndices, :);
 validByView      = sum(viewDirection.*cameraToPoints, 2) > ...
-    cosd(60)*(vecnorm(cameraToPoints, 2, 2));
+    cosd(60)*(vecnorm(cameraToPoints, 2, 2));% 注意viewDirection的模已经归一化，故此处不用求其范数
 
 % 3) Distance from map point to camera center is in the range of scale
 % invariant depth
@@ -208,7 +209,7 @@ level(level<0)   = 0;
 level(level>=numLevels-1) = numLevels-1;
 predictedScales  = scaleFactor.^level;
 
-% View angles
+% View angles，当前相机视角的法向量与各mappoints到相机的视角向量的角度
 viewAngles       = acosd(sum(cameraNormVector.*cameraToPoints, 2) ./ ...
     vecnorm(cameraToPoints, 2, 2));
 

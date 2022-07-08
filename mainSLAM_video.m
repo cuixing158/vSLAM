@@ -189,7 +189,7 @@ while ~isLoopClosed && hasdata(fs)
     [currFeatures, currPoints] = helperDetectAndExtractFeatures(currI, ...
         scaleFactor, numLevels);
 
-    % Track the last key frame,这里只跟踪了上一个关键帧获得的对应点
+    % Track the last key frame,这里只跟踪了上一个关键帧获得的对应点，多次匹配多次BA优化确定当前视图姿态
     % mapPointsIdx:   Indices of the map points observed in the current frame
     % featureIdx:     Indices of the corresponding feature points in the 
     %                 current frame
