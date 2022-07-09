@@ -207,7 +207,7 @@ arguments
     dstRoot (1,:) char = "./"; % 默认当前工作目录
     folderNames (1,:) string = ["imgFrontSurround","imgRearSurround",...
         "imgLeftSurround","imgRightSurround","imageimgFrontWindshield"];% 子文件夹名字,与simulink模块输出名字保持一致！
-    writeBinFile (1,1) logical = false; % 默认不需要存bin文件，存储推荐用csv文件
+    writeBinFile (1,1) logical = false; % 默认不必要存bin文件，存储推荐用csv文件
 end
 
 % step1: make dstRoot and sub-folders
@@ -253,17 +253,19 @@ while arrds.hasdata()
         currFolderName = folderNames(idx);
         currSubImgName = allDataTable.(currFolderName)(num);
         imgFullName = fullfile(dstRoot,currSubImgName);
-        num = num+1;
         if isfile(imgFullName) % avoid duplicate image writing
             continue;
         end
         imgData = squeeze(dataItem.(currFolderName));
         imwrite(imgData,imgFullName);
     end
+    num = num+1;
 end
 
 % step5: write binary file, reference: 2022.3 encodeBinLogFile function
-% Not recommended to save as a bin file, compared to csv files is not intuitive, and will not be much more efficient
+% Not recommended to save as bin files, compared to csv files is not 
+% intuitive, and will not be much more efficient, in addition to read in
+% C++ also need to pay attention to the variable storage order, type, size.
 if writeBinFile 
     binFolder = fullfile(dstRoot,"sensorBinFiles");
     if ~isfolder(binFolder)
@@ -277,7 +279,7 @@ if writeBinFile
         sensorItem = read(sensorDataDS);% timetable type
         binFullName = fullfile(binFolder,num2str(num)+".bin");% each bin file corresponds to an image file of the same name except that the suffix is different.
         fileID = fopen(binFullName,'w');
-        for idx = 1:sensorVarNames
+        for idx = 1:length(sensorVarNames)
             currVarName = sensorVarNames{idx};
             varData = squeeze(sensorItem.(currVarName));
             fwrite(fileID,varData,'double');% write actual size shape
@@ -285,91 +287,6 @@ if writeBinFile
         fclose(fileID);
         num = num+1;
     end
-end
-end
-
-function  flag = encodeBinLogFile(pathFound,binName,deltaX,deltaY,timeStamp,imgGrayIn,...
-    xEgoInGloabalWorld,yEgoInGloabalWorld,thetaEgoInGloabalWorld,...
-    direction,laneIn,UltrosonicData)
-% 功能：用于调试使用log函数，记录输入的二进制bin信息。
-% 输入：
-%     pathFound: 取值{-1，0，1，2，3，...},-1为没找到规划路径
-%     binName:字符向量，用于定义bin文件的名字
-%     其他参数等同于曾总的pathPlanningWide入口总函数，略
-% 输出：
-%     flag：1*1 bool类型，成功记录就是1，否则为0
-%
-% Email:xingxing.cui@long-horn.com
-% 2022.2.26 create this file
-% 2022.2.27 加入RLE高效算法
-% 2022.2.28 cuixingxing,1、修改pathFound不等于-1才记录bin文件；
-%                       2、加入bin文件名字自定义，string或者character vector
-%                       3、pathFound类型由double改为int8
-%                       4、timeStamp类型由uint16改为uint32，以防止溢出
-% 2022.3.1 文件名由pathLog改为encodeBinLogFile
-% 2022.3.12 为防止bin文件写入格式错误，导致后期解析bin文件不对，输入做断言判断
-%
-assert(numel(deltaX)==1,'input image "deltaX" must 1*1 size');
-assert(numel(deltaY)==1,'input image "deltaY" must 1*1 size');
-assert(numel(timeStamp)==1,'input image "timeStamp" must 1*1 size');
-assert(numel(xEgoInGloabalWorld)==1,'input image "xEgoInGloabalWorld" must 1*1 size');
-assert(numel(yEgoInGloabalWorld)==1,'input image "yEgoInGloabalWorld" must 1*1 size');
-assert(numel(thetaEgoInGloabalWorld)==1,'input image "thetaEgoInGloabalWorld" must 1*1 size');
-assert(numel(direction)==1,'input image "direction" must 1*1 size');
-assert(all(size(laneIn)==[1,10]),'input image "laneIn" must 1*10 size');
-assert(all(size(UltrosonicData)==[1,12]),'input image "UltrosonicData" must 1*12 size');
-assert(all(size(imgGrayIn)==[260,260]),'input image "imgGrayIn" must 260*260 size');
-
-flag = 0;
-persistent bufferData currentData
-if isempty(currentData)
-    currentData = struct('timeStamp',uint32(zeros(1)),...
-        'egoDirection',int8(0),...
-        'egoVelocity',0,...
-        'deltaXY',[0 0],...
-        'poseEgoInGloabalWorld',[0 0 0],...
-        'laneIn',[0 0 0 0 0 0 0 0 0 0 ],...
-        'UltrosonicData',[0 0 0 0 0 0 0 0 0 0 0 0],...
-        'imgIn',uint32(zeros(1,0)));
-    bufferData = [];
-    coder.varsize('currentData.imgIn', [1,260*260+1], [0,1]);% https://www.mathworks.com/help/fixedpoint/ref/coder.varsize.html
-end
-currentData.timeStamp = uint32(timeStamp);
-currentData.egoDirection = int8(direction);
-currentData.deltaXY = [deltaX,deltaY];
-currentData.poseEgoInGloabalWorld = ...
-    [xEgoInGloabalWorld,yEgoInGloabalWorld,thetaEgoInGloabalWorld];
-currentData.laneIn =laneIn;
-currentData.UltrosonicData = UltrosonicData;
-binaryImg = imbinarize(imgGrayIn);
-currentData.imgIn = rleEncodingImage(binaryImg);
-
-% 加入缓存
-bufferData = [bufferData,currentData];
-queueSize = 100;% 假设100个,理论存储大小约为260*260*100/8/1024=825Kb
-if length(bufferData)>queueSize
-    bufferData(1) =[];
-end
-
-% 生成bin文件
-if pathFound~=int8(-1) % 没找到路径打log查看信息
-    fileID = fopen(string(binName)+".bin",'w');
-    numsData = uint16(length(bufferData));
-    fwrite(fileID,numsData,'uint16');% 先写入缓存数据大小，便于加载使用
-    for i = 1:numsData
-        fwrite(fileID,bufferData(i).timeStamp,'uint32');% 1*1
-        fwrite(fileID,bufferData(i).egoDirection,'int8');% 1*1
-        fwrite(fileID,bufferData(i).egoVelocity,'double');% 1*1
-        fwrite(fileID,bufferData(i).deltaXY,'double');% 1*2
-        fwrite(fileID,bufferData(i).poseEgoInGloabalWorld,'double');% 1*3
-        fwrite(fileID,bufferData(i).laneIn,'double');%  1*10
-        fwrite(fileID,bufferData(i).UltrosonicData,'double');% 1*12
-        fwrite(fileID,length(bufferData(i).imgIn),'double');% 1*1, 便于后续再读取使用
-        fwrite(fileID,bufferData(i).imgIn,'uint32');% 1*n
-        %         fwrite(fileID,bufferData(i).imgIn,'ubit1');% 260*260, https://ww2.mathworks.cn/matlabcentral/answers/285101-is-it-possible-to-create-a-binary-vector-then-write-it-to-a-file
-    end
-    fclose(fileID);
-    flag =1;
 end
 end
 
