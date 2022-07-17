@@ -21,7 +21,7 @@ k1 = 0;k2 = 0;p1=0;p2 = 0;% opencv 格式
 
 %% decode data
 % images
-parseSimMatImg(simoutFile,dstRoot);
+parseSimMatImg(simoutFile,dstRoot,writeBinFile=true);
 alldata = load(simoutFile);
 imgsArrds = arrayDatastore(alldata.ans.image.Data,ReadSize=1, IterationDimension=4);
 numId = 1;
