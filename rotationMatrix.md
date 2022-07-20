@@ -1,6 +1,7 @@
 # Matlab中旋转矩阵和若干函数理解说明
 崔星星 2022.6.2 记录<br>
 2022.6.8 修改<br>
+2022.7.20 扩充修改<br>
 
 >matlab中众多工具箱都有涉及到旋转矩阵，欧拉角，四元数等的转换，但目前最新版本2022a中各个工具箱（CV,Automated Driving,Navigation,Robotics System,Sensor Fusion and Tracking等）还不完全统一明确（特别是CV相对其他工具箱），这里以**通用习惯**进行表述一些常用的操作,对官方文档进行进一步的**澄清扩充**，以便方便各位同事有效使用，更多详细延申看文后reference。
 
@@ -75,8 +76,16 @@ R_1\ast R_2' & 0\\
 (t1-t2)\ast R_2'  & 1
 \end{array}\right\rbrack$$
 
+其余相对变换类推，证明见文后的reference4。
 
-其余相对变换类推。
+## 注意点(下面陈述是非computer vision toolbox的互为转置的形式，即通用规范)
+1. 若camera2相对camera1的姿态为$T_{21}$，则camera2到camera1的转换齐次矩阵为$T_{21}$，即位于camera2下的坐标系的某一点$p_{3\times1}$转换到位于camera1下的坐标系的对应点$p'_{3\times1}=T_{21}* p_{3\times 1}$；
+1. 位置姿态即表示相对世界坐标系的姿态；
+1. 若camera1的位置姿态为$T_{3\times 4}=[R,t]$,则从世界坐标系到camera1的坐标系的转换姿态为$T'_{3\times 4} =[R',-R'*t]$；
+## point rotation和 frame(or axes) rotation
+点旋转和轴旋转不能搞混淆，**点旋转是坐标轴不动，点在动，而坐标轴旋转是点不动，坐标轴动**。比如空间一点$p1=[x;y;z]$绕经过中心点$p2=[u;v;w]$的竖直方向轴旋转，则旋转后的点坐标为$p3 = rotz(\theta)*(p1-p2)+p1$。
+坐标轴旋转是与点旋转的方向刚好相反，即若点旋转$\theta$，则也**可以看成坐标轴旋转$-\theta$**.比如要求一个坐标系到另外一个坐标系的转换矩阵，已知第一个**坐标系**先绕x轴旋转$\alpha$，然后再绕y轴旋转$\beta$，再绕z轴旋转$\gamma$,最后整体平移$t$得到第二个坐标系，那么其转换的旋转矩阵为$R =rotz(-\gamma)*roty(-\beta)*rotx(-\alpha)$,转换平移向量为$t'=-R'*t$,写成外参齐次矩阵形式为$[R,t']$,见reference5.
+
 
 ## 姿态绘图
 若提供一个绝对姿态$T(R,t)$的对象rigid3d，就可以绘制一个**确定的**相机姿态。注意matlab中规定相机默认姿态如下，符合我们通用想法：<br>
@@ -161,6 +170,8 @@ grid on; xlabel('x');ylabel('y');zlabel('z');axis equal;title('曾总数据集�
 1. [Euler angles](https://en.wikipedia.org/wiki/Euler_angles#Conventions_by_extrinsic_rotation)
 1. [Coordinate Systems in Automated Driving Toolbox](https://ww2.mathworks.cn/help/driving/ug/coordinate-systems.html)
 1. [Rotations, Orientations, and Quaternions for Automated Driving](https://ww2.mathworks.cn/help/driving/ug/rotations-using-quaternions-in-automated-driving.html)
+1. [how to get the relative camera pose to another camera pose?](https://ww2.mathworks.cn/matlabcentral/answers/1720045-how-to-get-the-relative-camera-pose-to-another-camera-pose?s_tid=srchtitle)
+1. [Why do vehichleToImage and worldToImage results not match?](https://ww2.mathworks.cn/matlabcentral/answers/1743825-why-do-vehichletoimage-and-worldtoimage-results-not-match)
 
 
 

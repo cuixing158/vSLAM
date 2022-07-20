@@ -1,11 +1,9 @@
 %% 使用openstreetmap 的图导入到matlab 中的drivingScenario进行cuboid simuliaion 和
 % UE simulination
-scenario = drivingScenario("SampleTime",0.01,"StopTime",inf);
+scenario = drivingScenario("SampleTime",0.01,"StopTime",3);
 roadNetwork(scenario,"OpenStreetMap","my_openstreetmap_export.xml");
 egovhicle = vehicle(scenario,ClassID=1);
-egopath = [-129.7,-390,0.5;
-    17.69,210,0.5;
-    34.7,250,0.5];
+egopath = [-133,-388,0;-98,-266,0];
 egospeed = 30;
 smoothTrajectory(egovhicle,egopath,egospeed);
 chasePlot(egovhicle)
