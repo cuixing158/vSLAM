@@ -14,7 +14,8 @@ function logSensorSubFcn(timeStamp,egoVelocity,poseEgoInGlobalWorld,positionRota
     dstRoot,folderNames,writeBinFile)
 % Brief: 用于simulink matlab function模块的调用函数，记录传感器数据，便于C++使用其数据
 % Details:
-%    子函数，undefined function时候，可以独立为m文件使用
+%    子函数，undefined function时候，可以独立为m文件使用.
+%    为加快simulink仿真速度，设置定步长求解器，采样时间设置为场景模块的采样时间的整数倍，这样可以保证生成的图像有连续性.
 % 
 % Syntax:  
 %     logSensorSubFcn(timeStamp,egoVelocity,poseEgoInGlobalWorld,positionRotationEgoInGloableWorld,imgFrontSurround,imgRearSurround,imgLeftSurround,imgRightSurround,imageImgFrontWindshield,ultrasonicData)
@@ -67,6 +68,10 @@ arguments
 end
 
 % step1: initialize variables 
+timeStamp = duration(seconds(timeStamp));
+currTT = timetable(timeStamp,egoVelocity,poseEgoInGlobalWorld,...
+positionRotationEgoInGloableWorld,ultrasonicData);% corresponding to C++ mat2BinStruct type
+    
 persistent numStep allTT allPaths
 if isempty(numStep)
     numStep = 1;
@@ -77,14 +82,8 @@ if isempty(numStep)
             mkdir(currFolder);
         end
     end
-    timeStamp = duration(seconds(timeStamp));
-    currTT = timetable(timeStamp,egoVelocity,poseEgoInGlobalWorld,...
-        positionRotationEgoInGloableWorld,ultrasonicData);% corresponding to C++ mat2BinStruct type
     allTT = currTT;
 else
-    timeStamp = duration(seconds(timeStamp));
-    currTT = timetable(timeStamp,egoVelocity,poseEgoInGlobalWorld,...
-        positionRotationEgoInGloableWorld,ultrasonicData);% corresponding to C++ mat2BinStruct type
     allTT = [allTT;currTT];
 end
 
