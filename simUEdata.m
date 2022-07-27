@@ -210,11 +210,7 @@ arguments
     writeBinFile (1,1) logical = false; % 默认不必要存bin文件，存储推荐用csv文件
 end
 
-% step1: make dstRoot and sub-folders
-if ~isfolder(dstRoot)
-    mkdir(dstRoot)
-end
-
+% step1: make folders
 allPaths = fullfile(dstRoot,folderNames);
 for idx = 1:length(folderNames)
     currFolder = allPaths(idx);
