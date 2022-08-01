@@ -38,7 +38,7 @@ function logSensorSubFcn(timeStamp,egoVelocity,poseEgoInGlobalWorld,positionRota
 % Example: 
 %    None
 % 
-% See also: None
+% See also: "Develop Visual SLAM Algorithm Using Unreal Engine Simulation"官方示例场景部分
 
 % Author:                          cuixingxing
 % Email:                           xingxing.cui@long-horn.com
