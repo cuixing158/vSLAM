@@ -24,6 +24,8 @@
 1. 2022.6.29 受曾总指示，着手以前同事的2D建图，看如何融于到目前郭倩，徐庆华的3D SLAM中来。
 1. 2022.7.9 受曾总指示，帮他把simulink中3D仿真的数据转为jpg,csv可供C++可读程序，见MatFcnProgram.m和SimUEdata.m文件。
 1. 2022.8.1 已把旧的SimUEdata.m转为./utils/mainUE_parse.mlx存储，废弃旧的解析mat格式文件。
+1. 2022.8.17 若要制作demo视频，在绘图函数类中添加类似如下语句。`F = getframe(obj.Axs);imwrite(F.cdata,"./temp/"+datestr(now,'mm_dd_HH_MM_SS_FFF')+".png");`把figure界面写成图片格式，然后组合成视频格式即可。
+
 
 
 ## 相机标定内外参
