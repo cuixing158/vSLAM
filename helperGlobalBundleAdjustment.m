@@ -1,10 +1,10 @@
-function [vSetKeyFrames, mapPointSet, directionAndDepth] = helperGlobalBundleAdjustment(...
-    vSetKeyFrames, mapPointSet, directionAndDepth, intrinsics, varargin)
+function [vSetKeyFrames, mapPointSet] = helperGlobalBundleAdjustment(...
+    vSetKeyFrames, mapPointSet, intrinsics, varargin)
 
 %   This is an example helper function that is subject to change or removal 
 %   in future releases.
 
-%   Copyright 2019-2021 The MathWorks, Inc.
+%   Copyright 2019-2022 The MathWorks, Inc.
 
 % Run full bundle adjustment on the first two key frames
 tracks       = findTracks(vSetKeyFrames);
@@ -22,9 +22,9 @@ tracks = tracks(validIdx);
 
 % Scale the map and the camera pose using the median depth of map points
 medianDepth   = median(vecnorm(refinedPoints.'));
-refinedPoints = refinedPoints / medianDepth;% 调整后的重建点景深距离在1m左右摆动
+refinedPoints = refinedPoints / medianDepth;
 
-if nargin > 4
+if nargin > 3
     relPose = varargin{1};
     refinedAbsPoses.AbsolutePose(end).Translation = ...
         refinedAbsPoses.AbsolutePose(end).Translation / medianDepth;
@@ -38,5 +38,6 @@ vSetKeyFrames = updateView(vSetKeyFrames, refinedAbsPoses);
 % Update map points with the refined positions
 mapPointSet   = updateWorldPoints(mapPointSet, pointIdx, refinedPoints);
 
-% Update view direction and depth 
-directionAndDepth = update(directionAndDepth, mapPointSet, vSetKeyFrames.Views, pointIdx, true);
+% Update view direction and depth
+mapPointSet   = updateRepresentativeView(mapPointSet, pointIdx, vSetKeyFrames.Views);
+mapPointSet   = updateLimitsAndDirection(mapPointSet, pointIdx, vSetKeyFrames.Views);

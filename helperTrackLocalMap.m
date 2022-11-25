@@ -1,5 +1,5 @@
 function [localKeyFrameIds, currPose, mapPointIdx, featureIdx, isKeyFrame] = ...
-    helperTrackLocalMap(mapPoints, directionAndDepth, vSetKeyFrames, mapPointIdx, ...
+    helperTrackLocalMap(mapPoints, vSetKeyFrames, mapPointIdx, ...
     featureIdx, currPose, currFeatures, currPoints, intrinsics, scaleFactor, numLevels, ...
     newKeyFrameAdded, lastKeyFrameIndex, currFrameIndex, numSkipFrames, numPointsKeyFrame)
 %helperTrackLocalMap Refine camera pose by tracking the local map
@@ -10,7 +10,6 @@ function [localKeyFrameIds, currPose, mapPointIdx, featureIdx, isKeyFrame] = ...
 %   Inputs
 %   ------
 %   mapPoints         - A worldpointset object storing map points
-%   directionAndDepth - A helperDirectionAndDepth object of map point attributes
 %   vSetKeyFrames     - An imageviewset storing key frames
 %   mapPointsIndices  - Indices of map points observed in the current frame
 %   featureIndices    - Indices of features in the current frame 
@@ -38,29 +37,26 @@ function [localKeyFrameIds, currPose, mapPointIdx, featureIdx, isKeyFrame] = ...
 %   isKeyFrame        - A boolean scalar indicating if the current frame is
 %                       a key frame
 
-%   Copyright 2019-2021 The MathWorks, Inc.
+%   Copyright 2019-2022 The MathWorks, Inc.
 
-persistent refKeyFrameId numPointsRefKeyFrame localPointsIndices localKeyFrameIdsInternal
+persistent numPointsRefKeyFrame localPointsIndices localKeyFrameIdsInternal
 
-if isempty(refKeyFrameId) || newKeyFrameAdded
-    [refKeyFrameId, localPointsIndices, localKeyFrameIdsInternal, numPointsRefKeyFrame] = ...
+if isempty(numPointsRefKeyFrame) || newKeyFrameAdded
+    [localPointsIndices, localKeyFrameIdsInternal, numPointsRefKeyFrame] = ...
     updateRefKeyFrameAndLocalPoints(mapPoints, vSetKeyFrames, mapPointIdx);
 end
 
 % Project the map into the frame and search for more map point correspondences
 newMapPointIdx = setdiff(localPointsIndices, mapPointIdx, 'stable');
-if isempty(newMapPointIdx)
-    newMapPointIdx = mapPointIdx;
-end
+localFeatures  = getFeatures(mapPoints, vSetKeyFrames.Views, newMapPointIdx); 
 [projectedPoints, inlierIndex, predictedScales, viewAngles] = removeOutlierMapPoints(mapPoints, ...
-    directionAndDepth, currPose, intrinsics, newMapPointIdx, scaleFactor, numLevels);
-localFeatures  = getFeatures(directionAndDepth, vSetKeyFrames.Views, newMapPointIdx); 
+    currPose, intrinsics, newMapPointIdx, scaleFactor, numLevels);
 
-newMapPointIdx = newMapPointIdx(inlierIndex);% 局部地图非当前视图看到的mappoints点索引
-localFeatures  = localFeatures(inlierIndex,:);% 局部地图非当前视图看到的mappoints点特征
+newMapPointIdx = newMapPointIdx(inlierIndex);
+localFeatures  = localFeatures(inlierIndex,:);
 
 unmatchedfeatureIdx = setdiff(cast((1:size( currFeatures.Features, 1)).', 'uint32'), ...
-    featureIdx,'stable');% 当前视图未参与匹配的特征索引
+    featureIdx,'stable');
 unmatchedFeatures   = currFeatures.Features(unmatchedfeatureIdx, :);
 unmatchedValidPoints= currPoints(unmatchedfeatureIdx);
 
@@ -98,26 +94,22 @@ if isKeyFrame
 end
 end
 
-% 以下为本主函数的一些支持函数
-function [refKeyFrameId, localPointsIndices, localKeyFrameIds, numPointsRefKeyFrame] = ...
+function [localPointsIndices, localKeyFrameIds, numPointsRefKeyFrame] = ...
     updateRefKeyFrameAndLocalPoints(mapPoints, vSetKeyFrames, pointIndices)
 % 此函数实际上是为了根据当前观察到的mappoints找出更多的潜在连接局部关键帧，最具代表的关键帧序号，局部点序号，最具代表关键帧的点数量
-% Get key frames K1 that observe map points in the current key frame
-viewIds = findViewsOfWorldPoint(mapPoints, pointIndices);
-K1IDs = vertcat(viewIds{:});
+if vSetKeyFrames.NumViews == 1
+    localKeyFrameIds = vSetKeyFrames.Views.ViewId;
+    localPointsIndices = (1:mapPoints.Count)';
+    numPointsRefKeyFrame = mapPoints.Count;
+    return
+end
 
 % The reference key frame has the most covisible map points 
-refKeyFrameId = mode(K1IDs);
+viewIds = findViewsOfWorldPoint(mapPoints, pointIndices);
+refKeyFrameId = mode(vertcat(viewIds{:}));
 
-% Retrieve key frames K2 that are connected to K1
-K1IDs = unique(K1IDs);
-localKeyFrameIds = K1IDs;
-
-for i = 1:numel(K1IDs)% 找潜在的更多的"连接"局部关键帧序号
-    views = connectedViews(vSetKeyFrames, K1IDs(i));
-    K2IDs = setdiff(views.ViewId, localKeyFrameIds);
-    localKeyFrameIds = [localKeyFrameIds; K2IDs]; %#ok<AGROW>
-end
+localKeyFrames = connectedViews(vSetKeyFrames, refKeyFrameId, "MaxDistance", 2);
+localKeyFrameIds = [localKeyFrames.ViewId; refKeyFrameId];
 
 pointIdx = findWorldPointsInView(mapPoints, localKeyFrameIds);
 if iscell(pointIdx)
@@ -129,7 +121,7 @@ else
 end
 end
 
-function features = getFeatures(directionAndDepth, views, mapPointIdx)
+function features = getFeatures(mapPoints, views, mapPointIdx)
 % 此函数作用就是完成局部地图中非当前视图的mappoints的"最具代表性特征"（观察到的最多视图对应的orb的特征）
 % Efficiently retrieve features and image points corresponding to map points
 % denoted by mapPointIdx
@@ -138,17 +130,15 @@ allIndices = zeros(1, numel(mapPointIdx));
 % ViewId and offset pair
 count = []; % (ViewId, NumFeatures)
 viewsFeatures = views.Features;
-majorViewIds  = directionAndDepth.MajorViewId;
-majorFeatureindices = directionAndDepth.MajorFeatureIndex;
 
 for i = 1:numel(mapPointIdx)
     index3d  = mapPointIdx(i);
     
-    viewId   = double(majorViewIds(index3d));
+    viewId   = double(mapPoints.RepresentativeViewId(index3d));
     
     if isempty(count)
         count = [viewId, size(viewsFeatures{viewId},1)];
-    elseif all(count(:,1) ~= viewId)
+    elseif ~any(count(:,1) == viewId)
         count = [count; viewId, size(viewsFeatures{viewId},1)];
     end
     
@@ -159,13 +149,9 @@ for i = 1:numel(mapPointIdx)
     else
         offset = 0;
     end
-    allIndices(i) = majorFeatureindices(index3d) + offset;
+    allIndices(i) = mapPoints.RepresentativeFeatureIndex(index3d) + offset;
 end
 
-if isempty(count)
-    features = [];
-    return;
-end
 uIds = count(:,1);
 
 % Concatenating features and indexing once is faster than accessing via a for loop
@@ -174,7 +160,7 @@ features    = allFeatures(allIndices, :);
 end
 
 function [projectedPoints, inliers, predictedScales, viewAngles] = removeOutlierMapPoints(...
-    mapPoints, directionAndDepth, pose, intrinsics, localPointsIndices, scaleFactor, ...
+    mapPoints, pose, intrinsics, localPointsIndices, scaleFactor, ...
     numLevels)
 % 此函数作用是完成局部地图非当前视图的mappoints的排除，排除规则：1，位于图像范围内投影点；2，各mappoints的"代表性方向"与当前视图的角度小于60度；3，各mappoints到当前视图的距离在orb尺度计算范围内
 % 1) Points within the image bounds
@@ -186,17 +172,17 @@ if isempty(projectedPoints)
     error('Tracking failed. Try inserting new key frames more frequently.')
 end
 
-% 2) Parallax less than 60 degrees,此处阈值60度确定？如何凭经验
-cameraNormVector = [0 0 1] * pose.Rotation';% 相机姿态的单位法向量
+% 2) Parallax less than 60 degrees
+cameraNormVector = [0 0 1] * pose.Rotation;
 cameraToPoints   = xyzPoints - pose.Translation;
-viewDirection    = directionAndDepth.ViewDirection(localPointsIndices, :);
+viewDirection    = mapPoints.ViewingDirection(localPointsIndices, :);
 validByView      = sum(viewDirection.*cameraToPoints, 2) > ...
     cosd(60)*(vecnorm(cameraToPoints, 2, 2));% 注意viewDirection的模已经归一化，故此处不用求其范数
 
 % 3) Distance from map point to camera center is in the range of scale
 % invariant depth
-minDist          = directionAndDepth.MinDistance(localPointsIndices);
-maxDist          = directionAndDepth.MaxDistance(localPointsIndices);
+minDist          = mapPoints.DistanceLimits(localPointsIndices,1)/scaleFactor;
+maxDist          = mapPoints.DistanceLimits(localPointsIndices,2)*scaleFactor;
 dist             = vecnorm(xyzPoints - pose.Translation, 2, 2);
 
 validByDistance  = dist > minDist & dist < maxDist;
@@ -223,7 +209,7 @@ function isKeyFrame = checkKeyFrame(numPointsRefKeyFrame, lastKeyFrameIndex, ...
     currFrameIndex, mapPointsIndices, numSkipFrames, numPointsKeyFrame)
 
 % More than numSkipFrames frames have passed from last key frame insertion
-tooManyNonKeyFrames = currFrameIndex >= lastKeyFrameIndex + numSkipFrames;
+tooManyNonKeyFrames = currFrameIndex > lastKeyFrameIndex + numSkipFrames;
 
 % Track less than numPointsKeyFrame map points
 tooFewMapPoints     = numel(mapPointsIndices) < numPointsKeyFrame;

@@ -7,7 +7,7 @@ function [mapPoints, vSetKeyFrames, recentPointIdx, stereoMapPointsIndices] = he
 %   This is an example helper function that is subject to change or removal
 %   in future releases.
 
-%   Copyright 2019-2020 The MathWorks, Inc.
+%   Copyright 2019-2022 The MathWorks, Inc.
 
 % Get connected key frames
 KcViews  = connectedViews(vSetKeyFrames, currKeyFrameId, minNumMatches);
@@ -21,8 +21,7 @@ currLocations   = currPoints.Location;
 currScales      = currPoints.Scale;
 
 % Camera projection matrix
-[R1, t1]        = cameraPoseToExtrinsics(currPose.Rotation, currPose.Translation);
-currCamMatrix   = cameraMatrix(intrinsics, R1, t1);
+currCamMatrix   = cameraProjection(intrinsics, pose2extr(currPose));
 
 recentPointIdx  = [];
 
@@ -30,9 +29,7 @@ for i = numel(KcIDs):-1:1
     
     kfPose      = vSetKeyFrames.Views.AbsolutePose(KcIDs(i));
     [~, kfIndex2d] = findWorldPointsInView(mapPoints, KcIDs(i));
-    
-    [R2, t2]    = cameraPoseToExtrinsics(kfPose.Rotation, kfPose.Translation);
-    kfCamMatrix = cameraMatrix(intrinsics, R2, t2);
+        kfCamMatrix = cameraProjection(intrinsics, pose2extr(kfPose));
     
     % Skip the key frame is the change of view is small
     isViewClose = norm(kfPose.Translation - currPose.Translation) < 0.2; %baseline
@@ -85,8 +82,8 @@ for i = numel(KcIDs):-1:1
         xyzPoints = mapPoints.WorldPoints(stereoMapPointsIndices(ia), :);
         
         % Compute reprojection errors
-        [points1proj, isInFrontOfCam1] = projectPoints(xyzPoints, kfCamMatrix');
-        [points2proj, isInFrontOfCam2] = projectPoints(xyzPoints, currCamMatrix');
+        [points1proj, isInFrontOfCam1] = projectPoints(xyzPoints, kfCamMatrix);
+        [points2proj, isInFrontOfCam2] = projectPoints(xyzPoints, currCamMatrix);
         points1 = uLocations1(indexPairs(ib, 1), :)';
         points2 = uLocations2(indexPairs(ib, 2), :)';
         errors1 = hypot(points1(1,:)-points1proj(1,:), ...
@@ -185,10 +182,10 @@ stereoMapPointsIndices = setdiff(stereoMapPointsIndices, recentPointIdx);
 end
 
 function F = computeF(intrinsics, pose1, pose2)
-R1 = pose1.Rotation';
+R1 = pose1.R;
 t1 = pose1.Translation';
 
-R2 = pose2.Rotation';
+R2 = pose2.R;
 t2 = pose2.Translation';
 
 R12 = R1'*R2;
@@ -198,9 +195,8 @@ t12 = R1'*(t2-t1);
 t12x = [0, -t12(3), t12(2)
     t12(3), 0, -t12(1)
     -t12(2) t12(1), 0];
-K = intrinsics.IntrinsicMatrix';
 
-F = K'\ t12x * R12 / K;
+F = intrinsics.K'\ t12x * R12 / intrinsics.K;
 end
 
 function inlier = filterTriangulatedMapPoints(xyzPoints, pose1, pose2, ...
@@ -246,7 +242,7 @@ end
 
 function isValid = checkEpipolarConstraint(intrinsics, currPose, kfPose, matchedPoints1, matchedPoints2, indexPairs, uScales2)
 % Epipole in the current key frame
-epiPole = worldToImage(intrinsics, currPose.Rotation, currPose.Translation, kfPose.Translation);
+epiPole = world2img(kfPose.Translation, pose2extr(currPose), intrinsics);
 distToEpipole = vecnorm(matchedPoints2 - epiPole, 2, 2);
 
 % Compute fundamental matrix

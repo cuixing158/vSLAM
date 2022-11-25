@@ -104,9 +104,6 @@ vSetKeyFrames = imageviewset;
 % Create an empty worldpointset object to store 3-D map points
 mapPointSet   = worldpointset;
 
-% Create a helperViewDirectionAndDepth object to store view direction and depth 
-directionAndDepth = helperViewDirectionAndDepth(size(xyzWorldPoints, 1));
-
 % Add the first key frame. Place the camera associated with the first 
 % key frame at the origin, oriented along the Z-axis
 preViewId     = 1;
@@ -132,8 +129,8 @@ mapPointSet   = addCorrespondences(mapPointSet, currViewId, newPointIdx, indexPa
 
 %% Refine and Visualize the Initial Reconstruction,初始关键帧的3d map points归一化
 
-[vSetKeyFrames, mapPointSet, directionAndDepth] = helperGlobalBundleAdjustment(...
-    vSetKeyFrames, mapPointSet, directionAndDepth, intrinsics, relPose);
+[vSetKeyFrames, mapPointSet] = helperGlobalBundleAdjustment(...
+    vSetKeyFrames, mapPointSet, intrinsics, relPose);
 
 % Visualize matched features in the current frame
 featurePlot   = helperVisualizeMatchedFeatures(currI, currPoints(indexPairs(:,2)));
@@ -202,7 +199,7 @@ while ~isLoopClosed && hasdata(fs)
     numSkipFrames     = 15;
     numPointsKeyFrame = 120;
     [localKeyFrameIds, currPose, mapPointsIdx, featureIdx, isKeyFrame] = ...
-        helperTrackLocalMap(mapPointSet, directionAndDepth, vSetKeyFrames, mapPointsIdx, ...
+        helperTrackLocalMap(mapPointSet, vSetKeyFrames, mapPointsIdx, ...
         featureIdx, currPose, currFeatures, currPoints, intrinsics, scaleFactor, numLevels, ...
         isLastFrameKeyFrame, lastKeyFrameIdx, currFrameIdx, numSkipFrames, numPointsKeyFrame);
 
@@ -227,8 +224,7 @@ while ~isLoopClosed && hasdata(fs)
     
     % Remove outlier map points that are observed in fewer than 3 key frames
     % mapPointsIdx更改后为从1开始的索引点序号
-    [mapPointSet, directionAndDepth, mapPointsIdx] = helperCullRecentMapPoints( ...
-        mapPointSet, directionAndDepth, mapPointsIdx, newPointIdx);
+    mapPointSet = helperCullRecentMapPoints(mapPointSet, mapPointsIdx, newPointIdx);
     
     % Create new map points by triangulation
     minNumMatches = 20;
@@ -237,14 +233,25 @@ while ~isLoopClosed && hasdata(fs)
         mapPointSet, vSetKeyFrames, currKeyFrameId, intrinsics, scaleFactor, ...
         minNumMatches, minParallax);
     
-    % Update view direction and depth
-    directionAndDepth = update(directionAndDepth, mapPointSet, ...
-        vSetKeyFrames.Views, [mapPointsIdx; newPointIdx], true);
-    
     % Local bundle adjustment
-    [mapPointSet, directionAndDepth, vSetKeyFrames, newPointIdx] = ...
-        helperLocalBundleAdjustment(mapPointSet, directionAndDepth, ...
-        vSetKeyFrames, currKeyFrameId, intrinsics, newPointIdx);
+    [refinedViews, dist] = connectedViews(vSetKeyFrames, currKeyFrameId, MaxDistance=2);
+    refinedKeyFrameIds = refinedViews.ViewId;
+    fixedViewIds = refinedKeyFrameIds(dist==2);
+    fixedViewIds = fixedViewIds(1:min(10, numel(fixedViewIds)));
+
+    % Refine local key frames and map points
+    [mapPointSet, vSetKeyFrames, mapPointIdx] = bundleAdjustment(...
+        mapPointSet, vSetKeyFrames, [refinedKeyFrameIds; currKeyFrameId], intrinsics, ...
+        FixedViewIDs=fixedViewIds, PointsUndistorted=true, AbsoluteTolerance=1e-7,...
+        RelativeTolerance=1e-16, Solver="preconditioned-conjugate-gradient", ...
+        MaxIteration=10);
+
+    % Update view direction and depth
+    mapPointSet = updateLimitsAndDirection(mapPointSet, mapPointIdx, vSetKeyFrames.Views);
+    
+    % Update representative view
+    mapPointSet = updateRepresentativeView(mapPointSet, mapPointIdx, vSetKeyFrames.Views);
+
     
     % Visualize 3D world points and camera trajectory
 %     keyFrameIds  = [keyFrameIds; currFrameIdx]; %#ok<AGROW>
@@ -311,7 +318,7 @@ optimizedPoses = optimG.Nodes(:, 1:2);
 vSetKeyFramesOptim = updateView(vSetKeyFrames, optimizedPoses);
 
 % Update map points after optimizing the poses
-mapPointSet = helperUpdateGlobalMap(mapPointSet, directionAndDepth, ...
+mapPointSet = helperUpdateGlobalMap(mapPointSet, ...
     vSetKeyFrames, vSetKeyFramesOptim, optimG.Nodes.Scale);
 
 keyFrameIds  = [keyFrameIds; currFrameIdx]; %#ok<AGROW>
@@ -412,53 +419,46 @@ isValid = nnz(cosAngle < cosd(minParallax) & cosAngle>0) > 20;
 end
 
 %--------------------------------------------------------------------------
-function [mapPointSet, directionAndDepth, mapPointsIdx] = helperCullRecentMapPoints(...
-        mapPointSet, directionAndDepth, mapPointsIdx, newPointIdx)
-%helperCullRecentMapPoints cull recently added map
+function mapPointSet= helperCullRecentMapPoints(mapPointSet, mapPointsIdx, newPointIdx)
+%helperCullRecentMapPoints cull recently added map points
 %points；此函数功能应该是剔除非最近添加的map points之外的点，官方注释应当调整
 outlierIdx    = setdiff(newPointIdx, mapPointsIdx);
 if ~isempty(outlierIdx)
     mapPointSet   = removeWorldPoints(mapPointSet, outlierIdx);
-    directionAndDepth = remove(directionAndDepth, outlierIdx);
-    mapPointsIdx  = mapPointsIdx - arrayfun(@(x) nnz(x>outlierIdx), mapPointsIdx);% 2022.5.9不是很理解;2022.5.15,mapPointsIdx就是索引重新从1开始排序,本质就是序号平行移动
-    % 可以替换以下代码
-%     [~,idx] = sort(mapPointsIdx);
-%     mapPointsIdx(idx)=1:length(mapPointsIdx);
 end
 end
 
 %--------------------------------------------------------------------------
-function [mapPointSet, directionAndDepth] = helperUpdateGlobalMap(...
-    mapPointSet, directionAndDepth, vSetKeyFrames, vSetKeyFramesOptim, poseScales)
+function mapPointSet = helperUpdateGlobalMap(...
+    mapPointSet, vSetKeyFrames, vSetKeyFramesOptim, poseScales)
 %helperUpdateGlobalMap update map points after pose graph optimization
 posesOld     = vSetKeyFrames.Views.AbsolutePose;
 posesNew     = vSetKeyFramesOptim.Views.AbsolutePose;
 positionsOld = mapPointSet.WorldPoints;
 positionsNew = positionsOld;
-indices = 1:mapPointSet.Count;
+indices     = 1:mapPointSet.Count;
 
 % Update world location of each map point based on the new absolute pose of 
-% the corresponding major view and the associated scales
-for i = 1: mapPointSet.Count
-    majorViewIds = directionAndDepth.MajorViewId(i);
-    poseNew = posesNew(majorViewIds).T;
-    poseNew(1:3, 1:3) = poseNew(1:3, 1:3)*poseScales(majorViewIds);
-    tform = posesOld(majorViewIds).T \ poseNew;
-    positionsNew(i, :) = positionsOld(i, :) * tform(1:3,1:3) + tform(4, 1:3);
+% the corresponding major view
+for i = indices
+    majorViewIds = mapPointSet.RepresentativeViewId(i);
+    poseNew = posesNew(majorViewIds).A;
+    poseNew(1:3, 1:3) = poseNew(1:3, 1:3) * poseScales(majorViewIds);
+    tform = affinetform3d(poseNew/posesOld(majorViewIds).A);
+    positionsNew(i, :) = transformPointsForward(tform, positionsOld(i, :));
 end
 mapPointSet = updateWorldPoints(mapPointSet, indices, positionsNew);
 end
 
 function gTruth = helperGetSensorGroundTruth(gTruthData)
-% 有真值时候可以进行对比
-gTruth = repmat(rigid3d, height(gTruthData), 1);
+gTruth = repmat(rigidtform3d(), height(gTruthData), 1);
 for i = 1:height(gTruthData) 
     currLocations = gTruthData{i,3:5};% 以车载摄像头位置为基准
     gTruth(i).Translation = currLocations;
     currEular = gTruthData{i,6:8}; % 曾总角度顺序依次XYZ 
     eularDegree = double(rad2deg(currEular));
     postRotationMat  = rotz(eularDegree(3))*roty(eularDegree(2))*rotx(eularDegree(1))*roty(90)*rotz(-90);% 相机默认开始朝向为Z轴正向
-    gTruth(i).Rotation = postRotationMat';
+    gTruth(i).R = postRotationMat;
 end
 end
 

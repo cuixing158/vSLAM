@@ -5,7 +5,7 @@ function [mapPoints, vSetKeyFrames] = helperAddNewKeyFrame(mapPoints, vSetKeyFra
 %   This is an example helper function that is subject to change or removal 
 %   in future releases.
 
-%   Copyright 2019-2020 The MathWorks, Inc.
+%   Copyright 2019-2022 The MathWorks, Inc.
 
 viewId = vSetKeyFrames.Views.ViewId(end)+1;
 
@@ -21,10 +21,10 @@ for i = 1:numel(keyFramesIndices)
     [~, ia, ib] = intersect(index3d, mapPointsIndices, 'stable');
     
     prePose   = viewsAbsPoses(localKeyFrameId);
-    relPose = rigid3d(cameraPose.Rotation*prePose.Rotation', ...
-        (cameraPose.Translation-prePose.Translation)*prePose.Rotation');% 注意这里相对平移矩阵，已在matlab answer中探讨过
+    relPose = rigidtform3d(prePose.R' * cameraPose.R, ...
+        (cameraPose.Translation-prePose.Translation)*prePose.R);% 注意这里相对平移矩阵，已在matlab answer中探讨过
     
-    if numel(ia) > 10
+    if numel(ia) > 5
         vSetKeyFrames = addConnection(vSetKeyFrames, localKeyFrameId, viewId, relPose, ...
             'Matches', [index2d(ia),featureIndices(ib)]);
     end

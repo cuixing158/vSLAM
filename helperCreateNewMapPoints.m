@@ -6,7 +6,7 @@ function [mapPoints, vSetKeyFrames, recentPointIdx] = helperCreateNewMapPoints(.
 %   This is an example helper function that is subject to change or removal 
 %   in future releases.
 
-%   Copyright 2019-2020 The MathWorks, Inc.
+%   Copyright 2019-2022 The MathWorks, Inc.
 
 % Get connected key frames 
 KcViews  = connectedViews(vSetKeyFrames, currKeyFrameId, minNumMatches);
@@ -20,8 +20,7 @@ currLocations   = currPoints.Location;
 currScales      = currPoints.Scale;
 
 % Camera projection matrix
-[R1, t1]        = cameraPoseToExtrinsics(currPose.Rotation, currPose.Translation);
-currCamMatrix   = cameraMatrix(intrinsics, R1, t1);
+currCamMatrix   = cameraProjection(intrinsics, pose2extr(currPose));
 
 recentPointIdx  = [];
 for i = 1:numel(KcIDs)
@@ -71,7 +70,7 @@ for i = 1:numel(KcIDs)
     matchedPoints2 = uLocations2(indexPairs(:,2), :);
     
     % Epipole in the current key frame
-    epiPole = worldToImage(intrinsics, currPose.Rotation, currPose.Translation, kfPose.Translation);
+    epiPole = world2img(kfPose.Translation, pose2extr(currPose), intrinsics);
     distToEpipole = vecnorm(matchedPoints2 - epiPole, 2, 2);
     
     % Compute fundamental matrix
@@ -82,7 +81,7 @@ for i = 1:numel(KcIDs)
     distToLine = abs(sum(epiLine.* [matchedPoints1, ones(size(matchedPoints1,1), 1)], 2))./...
         sqrt(sum(epiLine(:,1:2).^2, 2));
     isValid = distToLine < 2*uScales2(indexPairs(:,2)) & ...
-        distToEpipole > 10*uScales2(indexPairs(:,2));% 这个约束不动，为啥跟尺度牵扯上关系？比例因子也搞不懂
+        distToEpipole > 10*uScales2(indexPairs(:,2));
     
     indexPairs = indexPairs(isValid, :);
     matchedPoints1 = matchedPoints1(isValid, :);
@@ -96,8 +95,7 @@ for i = 1:numel(KcIDs)
     matchedPoints2  = matchedPoints2(isLarge, :);
     indexPairs      = indexPairs(isLarge, :);
 
-    [R2, t2]    = cameraPoseToExtrinsics(kfPose.Rotation, kfPose.Translation);
-    kfCamMatrix = cameraMatrix(intrinsics, R2, t2);
+    kfCamMatrix = cameraProjection(intrinsics, pose2extr(kfPose));
 
     % Triangulate two views to create new world points
     [xyzPoints, reprojectionErrors, validIdx] = triangulate(matchedPoints1, ...
@@ -135,22 +133,21 @@ end
 end
 
 function F = computeF(intrinsics, pose1, pose2)
-R1 = pose1.Rotation';
+R1 = pose1.R;
 t1 = pose1.Translation';
 
-R2 = pose2.Rotation';
+R2 = pose2.R;
 t2 = pose2.Translation';
 
 R12 = R1'*R2;
 t12 = R1'*(t2-t1);
 
-% Skew symmetric matrix，即反对称矩阵，F推导参考：https://blog.csdn.net/rs_lys/article/details/105427224
+% Skew symmetric matrix
 t12x = [0, -t12(3), t12(2)
     t12(3), 0, -t12(1)
     -t12(2) t12(1), 0];
-K = intrinsics.IntrinsicMatrix';
 
-F = K'\ t12x * R12 / K;
+F = intrinsics.K'\ t12x * R12 / intrinsics.K;
 end
 
 function inlier = filterTriangulatedMapPoints(xyzPoints, pose1, pose2, ...
@@ -178,9 +175,8 @@ end
 function isLarge = isLargeParalalx(points1, points2, pose1, pose2, intrinsics, minParallax)
 
 % Parallax check
-K = intrinsics.IntrinsicMatrix;
-ray1 = [points1, ones(size(points1(:,1)))]/K *pose1.Rotation;% 通用常规方程为p = K*x，在matlab中正好相反，即x*K=p,其中p为像素坐标，x为相机物理坐标
-ray2 = [points2, ones(size(points1(:,2)))]/K *pose2.Rotation;
+ray1 = [points1, ones(size(points1(:,1)))]/intrinsics.K' *pose1.R';
+ray2 = [points2, ones(size(points1(:,2)))]/intrinsics.K' *pose2.R';
 
 cosParallax = sum(ray1 .* ray2, 2) ./(vecnorm(ray1, 2, 2) .* vecnorm(ray2, 2, 2));
 isLarge     = cosParallax < cosd(minParallax) & cosParallax > 0;

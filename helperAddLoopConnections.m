@@ -1,6 +1,6 @@
-function [mapPoints, vSetKeyFrames, loopClosureEdge] = helperAddLoopConnections(...
-    mapPoints, vSetKeyFrames, loopCandidates, currKeyFrameId, currFeatures, currPoints, ...
-    loopEdgeNumMatches, isStereo)
+function [isLoopClosed, mapPoints, vSetKeyFrames, loopClosureEdge] = helperAddLoopConnections(...
+    mapPoints, vSetKeyFrames, loopCandidates, currKeyFrameId, currFeatures, ...
+    currPoints, loopEdgeNumMatches, isStereo)
 %helperAddLoopConnections add connections between the current key frame and
 %   the valid loop candidate key frames. A loop candidate is valid if it has
 %   enough covisible map points with the current key frame.
@@ -8,16 +8,17 @@ function [mapPoints, vSetKeyFrames, loopClosureEdge] = helperAddLoopConnections(
 %   This is an example helper function that is subject to change or removal
 %   in future releases.
 
-%   Copyright 2019-2021 The MathWorks, Inc.
+%   Copyright 2019-2022 The MathWorks, Inc.
 
-numCandidates   = numel(loopCandidates);
+loopClosureEdge = [];
+
+numCandidates   = size(loopCandidates,1);
 [index3d1, index2d1] = findWorldPointsInView(mapPoints, currKeyFrameId);
 validFeatures1  = currFeatures.Features(index2d1, :);
 validPoints1    = currPoints(index2d1, :);
 
-loopClosureEdge = [];
 for k = 1 : numCandidates
-    [index3d2, index2d2] = findWorldPointsInView(mapPoints, loopCandidates(k));
+ [index3d2, index2d2] = findWorldPointsInView(mapPoints, loopCandidates(k));
     allFeatures2   = vSetKeyFrames.Views.Features{loopCandidates(k)};
     allPoints2     = vSetKeyFrames.Views.Points{loopCandidates(k)};
     validFeatures2 = allFeatures2(index2d2, :);
@@ -26,11 +27,11 @@ for k = 1 : numCandidates
     indexPairs = matchFeatures(binaryFeatures(validFeatures1), binaryFeatures(validFeatures2), ...
         'Unique', true, 'MaxRatio', 0.9, 'MatchThreshold', 40);
     
-    % Orientation consistency check,2022.6.16分析：为何要加入这个方向角约束？方向角约束是否
+    % Orientation consistency check
     orientation1 = validPoints1.Orientation(indexPairs(:,1));
     orientation2 = validPoints2.Orientation(indexPairs(:,2));
-    [N, ~, bin] = histcounts(abs(orientation1 - orientation2), 0:pi/30:2*pi);% 这里间隔要取合适，否在得到只有前3个匹配
-    [~, ia] = maxk(N, 3); % Select the top 3 bins，3个集中的峰值，返回峰值序号
+    [N, ~, bin] = histcounts(abs(orientation1 - orientation2), 0:pi/30:2*pi);
+    [~, ia] = maxk(N, 3); % Select the top 3 bins
     isConsistent = ismember(bin, ia);
 
     indexPairs = indexPairs(isConsistent, :);
@@ -47,25 +48,25 @@ for k = 1 : numCandidates
     worldPoints1 = mapPoints.WorldPoints(index3d1(indexPairs(:, 1)), :);
     worldPoints2 = mapPoints.WorldPoints(index3d2(indexPairs(:, 2)), :);
     
-    pose1 = vSetKeyFrames.Views.AbsolutePose(end);
-    pose2 = vSetKeyFrames.Views.AbsolutePose(loopCandidates(k));
-    [rotation1, translation1] = cameraPoseToExtrinsics(pose1.Rotation, pose1.Translation);
-    [rotation2, translation2] = cameraPoseToExtrinsics(pose2.Rotation, pose2.Translation);
+    tform1 = pose2extr(vSetKeyFrames.Views.AbsolutePose(end));
+    tform2 = pose2extr(vSetKeyFrames.Views.AbsolutePose(loopCandidates(k)));
     
-    worldPoints1InCamera1 = worldPoints1 * rotation1 + translation1;
-    worldPoints2InCamera2 = worldPoints2 * rotation2 + translation2;
-    
+    worldPoints1InCamera1 = transformPointsForward(tform1, worldPoints1) ;
+    worldPoints2InCamera2 = transformPointsForward(tform2, worldPoints2) ;
+
     if isStereo
-        transformType = 'rigid';
+        transformType = "rigid";
     else
-        transformType = 'similarity';
+        transformType = "similarity";
     end
-    
-    [tform, inlierIndex] = estimateGeometricTransform3D(...
+
+    w = warning('off','all');
+    [tform, inlierIndex] = estgeotform3d(...
         worldPoints1InCamera1, worldPoints2InCamera2, transformType);
+    warning(w);
 
     % Add connection between the current key frame and the loop key frame
-    matches = [index2d2(indexPairs(inlierIndex, 2)), index2d1(indexPairs(inlierIndex, 1))];
+    matches = uint32([index2d2(indexPairs(inlierIndex, 2)), index2d1(indexPairs(inlierIndex, 1))]);
     vSetKeyFrames = addConnection(vSetKeyFrames, loopCandidates(k), currKeyFrameId, tform, 'Matches', matches);
     disp(['Loop edge added between keyframe: ', num2str(loopCandidates(k)), ' and ', num2str(currKeyFrameId)]);
     
@@ -76,4 +77,5 @@ for k = 1 : numCandidates
     
     loopClosureEdge = [loopClosureEdge; loopCandidates(k), currKeyFrameId];
 end
+isLoopClosed = ~isempty(loopClosureEdge);
 end

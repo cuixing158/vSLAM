@@ -32,7 +32,7 @@ classdef visualizeSceneAndTrajectory < handle
             arguments
                 vSetKeyFrames imageviewset 
                 mapPoints worldpointset
-                cumGTruth (:,1) rigid3d = rigid3d()
+                cumGTruth (:,1) rigidtform3d = rigidtform3d()
             end
         
             [xyzPoints, camCurrPose, trajectory]  = retrievePlottedData(obj, vSetKeyFrames, mapPoints);
@@ -54,7 +54,7 @@ classdef visualizeSceneAndTrajectory < handle
             estiTrajectory = trajectory;
       
             % 尺度和坐标变换，转换到真值下
-            obj.transformT = rigid3d();
+            obj.transformT = rigidtform3d();
             if length(cumGTruth)>1
                 assert(length(cumGTruth)==vSetKeyFrames.NumViews)
                 actualTrans = vertcat(cumGTruth.Translation);
@@ -63,22 +63,22 @@ classdef visualizeSceneAndTrajectory < handle
                 obj.Scale = median(cumActualDist./cumEstimateDist);
                 scale = obj.Scale;
                 xyzPoints = xyzPoints.*scale;
-                camCurrPose.AbsolutePose = rigid3d(camCurrPose.AbsolutePose.Rotation,...
+                camCurrPose.AbsolutePose = rigidtform3d(camCurrPose.AbsolutePose.R,...
                     camCurrPose.AbsolutePose.Translation.*scale);
                 estiTrajectory = estiTrajectory.*scale;
               % 转换变换
-                 srcPose = rigid3d(eye(3),estiTrajectory(1,:));% 初始关键帧的第一个姿态
-                 dstPose = cumGTruth(1); %如何没有输入cumGTruth,则默认就是rigid3d()，即与srcPose一样
+                 srcPose = rigidtform3d(eye(3),estiTrajectory(1,:));% 初始关键帧的第一个姿态
+                 dstPose = cumGTruth(1); %如果没有输入cumGTruth,则默认就是rigidtform3d()，即与srcPose一样
 %                  dstPose.Rotation = (eul2rotm([0.0007,0.11136,3.12667],'XYZ')*roty(90)*rotz(-90))';
                  %                  initGTpose = plotCamera('AbsolutePose',dstPose, 'Parent', obj.Axes, 'Size', 0.2);
-                 obj.transformT = rigid3d(srcPose.T*dstPose.T);% 摄像机物理坐标转换为世界坐标的变换
+                 obj.transformT = rigidtform3d(dstPose.A*srcPose.A);% 摄像机物理坐标转换为世界坐标的变换
 
                  obj.ActualTrajectory = plot3(obj.Axes,actualTrans(:,1),actualTrans(:,2),...
                      actualTrans(:,3),'g','LineWidth',2,'DisplayName','Actual trajectory');
             end
 
             estiTrajectory = transformPointsForward(obj.transformT,estiTrajectory);
-            camCurrPose.AbsolutePose = rigid3d(camCurrPose.AbsolutePose.T*obj.transformT.T);
+            camCurrPose.AbsolutePose = rigidtform3d(obj.transformT.A*camCurrPose.AbsolutePose.A);
             xyzPoints = transformPointsForward(obj.transformT,xyzPoints);
             
             % Plot camera trajectory
@@ -97,7 +97,7 @@ classdef visualizeSceneAndTrajectory < handle
                 obj
                 vSetKeyFrames imageviewset 
                 mapPoints worldpointset
-                cumGTruth (:,1) rigid3d = rigid3d() % 长度应当与vSetKeyFrames的imageID一致
+                cumGTruth (:,1) rigidtform3d = rigidtform3d() % 长度应当与vSetKeyFrames的imageID一致
             end
             
             [xyzPoints, currPose, trajectory]  = retrievePlottedData(obj, vSetKeyFrames, mapPoints);
@@ -118,7 +118,7 @@ classdef visualizeSceneAndTrajectory < handle
                  scale = obj.Scale;
                  fprintf('current scale:%.2f\n',scale);
                  xyzPoints = xyzPoints.*scale;
-                 currPose.AbsolutePose = rigid3d(currPose.AbsolutePose.Rotation,...
+                 currPose.AbsolutePose = rigidtform3d(currPose.AbsolutePose.R,...
                      currPose.AbsolutePose.Translation.*scale);
                  estiTrajectory = estiTrajectory.*scale;
                  set(obj.ActualTrajectory,'XData',actualTrans(:,1),'YData',actualTrans(:,2),...
@@ -127,7 +127,7 @@ classdef visualizeSceneAndTrajectory < handle
               end
             % 加入对齐操作
             xyzPoints = transformPointsForward(obj.transformT,xyzPoints);
-            currPose.AbsolutePose = rigid3d(currPose.AbsolutePose.T*obj.transformT.T);
+            currPose.AbsolutePose = rigidtform3d(obj.transformT.A*currPose.AbsolutePose.A);
             estiTrajectory = transformPointsForward(obj.transformT,estiTrajectory);
             
             % 更新轨迹
@@ -143,10 +143,10 @@ classdef visualizeSceneAndTrajectory < handle
                 if length(cumGTruth)>1
                     camSize = 1;
                 end
-                plotCamera('AbsolutePose',currPose.AbsolutePose,...
-                    'Parent', obj.Axes, 'Size', camSize,...
-                    'Color',[0.2,0.6,0.7],'Opacity',0.9,'AxesVisible',true,...
-                    'Label',num2str(currPose.ViewId));
+                plotCamera(AbsolutePose=currPose.AbsolutePose,...
+                    Parent=obj.Axes, Size=camSize,...
+                    Color=[0.2,0.6,0.7],Opacity=0.9,AxesVisible=true,...
+                    Label=num2str(currPose.ViewId));
             end
             xmin = min(estiTrajectory(:,1));
             ymin = min(estiTrajectory(:,2));
@@ -189,12 +189,12 @@ classdef visualizeSceneAndTrajectory < handle
             currPose    = camPoses(end,:); % Contains both ViewId and Pose
 
             % Ensure the rotation matrix is a rigid transformation
-            R = double(currPose.AbsolutePose.Rotation);
+            R = double(currPose.AbsolutePose.R);
             t = double(currPose.AbsolutePose.Translation);
             [U, ~, V] = svd(R);
-            currPose.AbsolutePose.T = eye(4);
-            currPose.AbsolutePose.T(4, 1:3) = t;
-            currPose.AbsolutePose.T(1:3, 1:3) = U * V';
+            currPose.AbsolutePose.A = eye(4);
+            currPose.AbsolutePose.A(1:3, 4) = t;
+            currPose.AbsolutePose.A(1:3, 1:3) = U * V';
 
             trajectory  = vertcat(camPoses.AbsolutePose.Translation);
             xyzPoints   = mapPoints.WorldPoints;%(mapPoints.UserData.Validity,:);

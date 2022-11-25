@@ -41,7 +41,7 @@ matchedImagePoints = currPoints.Location(indexPairs(:,1),:);
 matchedWorldPoints = mapPoints.WorldPoints(index3d(indexPairs(:,2)), :);
 
 matchedImagePoints = cast(matchedImagePoints, 'like', matchedWorldPoints);
-[worldOri, worldLoc, inlier, status] = estimateWorldCameraPose(...
+[worldPose, inlier, status] = estworldpose(...
     matchedImagePoints, matchedWorldPoints, intrinsics, ...
     'Confidence', 95, 'MaxReprojectionError', 3, 'MaxNumTrials', 1e4);
 
@@ -52,7 +52,7 @@ if status
     return
 end
 
-currPose = rigid3d(worldOri, worldLoc);
+currPose = worldPose;
 
 % Refine camera pose only
 currPose = bundleAdjustmentMotion(matchedWorldPoints(inlier,:), ...
@@ -63,9 +63,9 @@ currPose = bundleAdjustmentMotion(matchedWorldPoints(inlier,:), ...
 % Search for more matches with the map points in the previous key frame
 xyzPoints = mapPoints.WorldPoints(index3d,:);
 
-tform = cameraPoseToExtrinsics(currPose);
+tform = pose2extr(currPose);
 
-[projectedPoints, isInImage] = worldToImage(intrinsics, tform, xyzPoints);
+[projectedPoints, isInImage] = world2img(xyzPoints, tform,intrinsics );
 projectedPoints = projectedPoints(isInImage, :);
 
 minScales    = max(1, lastKeyFramePoints.Scale(isInImage)/scaleFactor);
