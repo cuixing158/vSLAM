@@ -12,6 +12,7 @@ function [isLoopClosed, mapPoints, vSetKeyFrames, loopClosureEdge] = helperAddLo
 
 loopClosureEdge = [];
 
+% 熟练掌握imageviewset和worldpointset及其object function的用法
 numCandidates   = size(loopCandidates,1);
 [index3d1, index2d1] = findWorldPointsInView(mapPoints, currKeyFrameId);
 validFeatures1  = currFeatures.Features(index2d1, :);

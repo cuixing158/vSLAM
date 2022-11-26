@@ -17,13 +17,14 @@ function [isDetected, loopKeyFrameIds] = helperCheckLoopClosure(vSetKeyFrames, .
 % to the current key frame
 covisViews          = connectedViews(vSetKeyFrames, currKeyframeId);
 covisViewsIds       = covisViews.ViewId;
-strongCovisViews    = connectedViews(vSetKeyFrames, currKeyframeId, loopEdgeNumMatches);
+strongCovisViews    = connectedViews(vSetKeyFrames, currKeyframeId, loopEdgeNumMatches);% 熟练掌握connectedView方法
 strongCovisViewIds  = strongCovisViews.ViewId;
 
 % Retrieve the top 10 similar connected key frames
 [~,~,scores] = evaluateImageRetrieval(currImg, imageDatabase, strongCovisViewIds, 'NumResults', 10);
 minScore     = min(scores);
 
+% loopKeyFrameIds与candidateScores数组大小一致，一一对应，candidateScores按照分数从大到小排序，loopKeyFrameIds乱序
 [loopKeyFrameIds,ia] = setdiff(candidateViewIds, covisViewsIds, 'stable');
 
 % Scores of non-connected key frames
@@ -44,7 +45,7 @@ end
 minNumCandidates = 3; % At least 3 candidates are found
 if size(loopKeyFrameIds,1) >= minNumCandidates
     groups = nchoosek(loopKeyFrameIds, minNumCandidates);
-    consecutiveGroups = groups(max(groups,[],2) - min(groups,[],2) < 4, :);
+    consecutiveGroups = groups(max(groups,[],2) - min(groups,[],2) <= 4, :);% 很妙的代码，乱序的groups序号获得是否连续不大于4帧的序号
     if ~isempty(consecutiveGroups) % Consecutive candidates are found
         loopKeyFrameIds = consecutiveGroups(1,:);
         isDetected = true;
