@@ -36,13 +36,13 @@ classdef visualizeSceneAndTrajectory < handle
             end
         
             [xyzPoints, camCurrPose, trajectory]  = retrievePlottedData(obj, vSetKeyFrames, mapPoints);
-             
-            obj.MapPointsPlot = pcplayer(obj.XLim, obj.YLim, obj.ZLim,...
-                'VerticalAxis', 'y', 'VerticalAxisDir', 'down', 'MarkerSize', 5);
             if length(cumGTruth)>1
                 obj.MapPointsPlot = pcplayer(obj.XLim, obj.YLim, obj.ZLim);
+            else
+                obj.MapPointsPlot = pcplayer(obj.XLim, obj.YLim, obj.ZLim,...
+                    'VerticalAxis', 'y', 'VerticalAxisDir', 'down', 'MarkerSize', 5);
             end
-            
+
             obj.Axes  = obj.MapPointsPlot.Axes;
             obj.Axes.XLabel.String = "X(m)";
             obj.Axes.YLabel.String = "Y(m)";
@@ -69,8 +69,6 @@ classdef visualizeSceneAndTrajectory < handle
               % 转换变换
                  srcPose = rigidtform3d(eye(3),estiTrajectory(1,:));% 初始关键帧的第一个姿态
                  dstPose = cumGTruth(1); %如果没有输入cumGTruth,则默认就是rigidtform3d()，即与srcPose一样
-%                  dstPose.Rotation = (eul2rotm([0.0007,0.11136,3.12667],'XYZ')*roty(90)*rotz(-90))';
-                 %                  initGTpose = plotCamera('AbsolutePose',dstPose, 'Parent', obj.Axes, 'Size', 0.2);
                  obj.transformT = rigidtform3d(dstPose.A*srcPose.A);% 摄像机物理坐标转换为世界坐标的变换
 
                  obj.ActualTrajectory = plot3(obj.Axes,actualTrans(:,1),actualTrans(:,2),...
@@ -121,6 +119,7 @@ classdef visualizeSceneAndTrajectory < handle
                  currPose.AbsolutePose = rigidtform3d(currPose.AbsolutePose.R,...
                      currPose.AbsolutePose.Translation.*scale);
                  estiTrajectory = estiTrajectory.*scale;
+                 % 1、绘制实际轨迹
                  set(obj.ActualTrajectory,'XData',actualTrans(:,1),'YData',actualTrans(:,2),...
                       'ZData',actualTrans(:,3))
 %                  obj.transformT.Rotation = cumGTruth(end).Rotation;
@@ -130,12 +129,14 @@ classdef visualizeSceneAndTrajectory < handle
             currPose.AbsolutePose = rigidtform3d(obj.transformT.A*currPose.AbsolutePose.A);
             estiTrajectory = transformPointsForward(obj.transformT,estiTrajectory);
             
-            % 更新轨迹
+            % 2、更新估计特征点云
             obj.MapPointsPlot.view(xyzPoints, color);
+
+            % 3、更新估计轨迹
             set(obj.EstimatedTrajectory, 'XData', estiTrajectory(:,1), 'YData', ...
                 estiTrajectory(:,2), 'ZData', estiTrajectory(:,3));
            
-            % Update the current camera pose since the first camera is fixed
+            % 4、周期性绘制相机姿态
             obj.CameraPlot.AbsolutePose = currPose.AbsolutePose;
             obj.CameraPlot.Label        = num2str(currPose.ViewId);
             if mod(size(estiTrajectory,1),100)==1
@@ -170,6 +171,8 @@ classdef visualizeSceneAndTrajectory < handle
             
             % Plot the optimized trajectory
             trans = vertcat(poses.AbsolutePose.Translation);
+            trans = transformPointsForward(obj.transformT,obj.Scale*trans);
+
             obj.OptimizedTrajectory = plot3(obj.Axes, trans(:, 1), trans(:, 2), trans(:, 3), 'm', ...
                 'LineWidth', 2, 'DisplayName', 'Optimized trajectory');
         end

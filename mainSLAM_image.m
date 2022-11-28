@@ -10,8 +10,8 @@ initPose = gTruth(1);
 gTruth = gTruth(validIndexStart:end,:);
 
 % 间隔取帧
-imds = subset(imds,1:2:length(imds.Files));
-gTruth = gTruth(1:2:length(gTruth));
+imds = subset(imds,1:1:length(imds.Files));
+gTruth = gTruth(1:1:length(gTruth));
 
 %% 我们摄像头停车场视频
 % videoReader = VideoReader('E:\AllDataAndModels\videos20220519\WIN_20220519_11_16_10_Pro.mp4');
@@ -171,14 +171,16 @@ showLegend(mapPlot);
 %% Initialize Place Recognition Database
 
 % Load the bag of features data created offline
-placeRecDatabase = fullfile(parkingLotRoot,"bagOfFeaturesDataSLAM.mat");
-if isfile(placeRecDatabase)
-  load(placeRecDatabase);
-else
-    bofData = bagOfFeatures(imds,CustomExtractor=@helperORBFeatureExtractorFunction,...
-    TreeProperties=[5,10]);
-    save(placeRecDatabase,'bofData');
-end
+load("bagOfFeaturesDataSLAM.mat");
+bofData = bof;
+% placeRecDatabase = fullfile(parkingLotRoot,"bagOfFeaturesDataSLAM.mat");
+% if isfile(placeRecDatabase)
+%   load(placeRecDatabase);
+% else
+%     bofData = bagOfFeatures(imds,CustomExtractor=@helperORBFeatureExtractorFunction,...
+%     TreeProperties=[3,10],StrongestFeatures=1);
+%     save(placeRecDatabase,'bofData');
+% end
 
 % Initialize the place recognition database
 loopDatabase    = invertedImageIndex(bofData, "SaveFeatureLocations", false);
@@ -345,8 +347,6 @@ vSetKeyFramesOptim = updateView(vSetKeyFrames, optimizedPoses);
 mapPointSet = helperUpdateGlobalMap(mapPointSet, ...
     vSetKeyFrames, vSetKeyFramesOptim, optimG.Nodes.Scale);
 
-keyFrameIds  = [keyFrameIds; currFrameIdx]; %#ok<AGROW>
-currGTruths = gTruth(keyFrameIds);
 updatePlot(mapPlot, vSetKeyFrames, mapPointSet,currGTruths);
 
 % Plot the optimized camera trajectory
