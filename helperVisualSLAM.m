@@ -6,7 +6,7 @@ function [mapPlot, optimizedPoses, addedFramesIdx] = helperVisualSLAM(imds, intr
 %   This is an example helper function that is subject to change or removal 
 %   in future releases.
 
-%   Copyright 2020 The MathWorks, Inc.
+%   Copyright 2020-2022 The MathWorks, Inc.
 
 % Set random seed for reproducibility
 rng(0);
@@ -36,8 +36,8 @@ while ~isMapInitialized && currFrameIdx < numel(imds.Files)
     currFrameIdx = currFrameIdx + 1;
     
     % Find putative feature matches
-    indexPairs = matchFeatures(preFeatures, currFeatures, 'Unique', true, ...
-        'MaxRatio', 0.7, 'MatchThreshold', 40);
+    indexPairs = matchFeatures(preFeatures, currFeatures, Unique=true, ...
+        MaxRatio=0.7, MatchThreshold=40);
 
     % If not enough matches are found, check the next frame
     minMatches = 50;
@@ -69,19 +69,18 @@ while ~isMapInitialized && currFrameIdx < numel(imds.Files)
     % points to reduce computation
     inlierPrePoints  = preMatchedPoints(inlierTformIdx);
     inlierCurrPoints = currMatchedPoints(inlierTformIdx);
-    [relOrient, relLoc, validFraction] = relativeCameraPose(tform, intrinsics, ...
+    [relPose, validFraction] = estrelpose(tform, intrinsics, ...
         inlierPrePoints(1:2:end), inlierCurrPoints(1:2:end));
     
     % If not enough inliers are found, move to the next frame
-    if validFraction < 0.6 || numel(size(relOrient))==3
+    if validFraction < 0.6 || numel(relPose)==3
         continue
     end
     
     % Triangulate two views to obtain 3-D map points
-    relPose = rigid3d(relOrient, relLoc);
-    minParallax = 0.2;
+    minParallax = 0.5;
     [isValid, xyzWorldPoints, inlierTriangulationIdx] = helperTriangulateTwoFrames(...
-        rigid3d, relPose, inlierPrePoints, inlierCurrPoints, intrinsics, minParallax);
+        rigidtform3d, relPose, inlierPrePoints, inlierCurrPoints, intrinsics, minParallax);
     
     if ~isValid
         continue
@@ -111,22 +110,19 @@ vSetKeyFrames = imageviewset;
 % Create an empty worldpointset object to store 3-D map points
 mapPointSet   = worldpointset;
 
-% Create a helperViewDirectionAndDepth object to store view direction and depth 
-directionAndDepth = helperViewDirectionAndDepth(size(xyzWorldPoints, 1));
-
 % Add the first key frame. Place the camera associated with the first 
 % key frame at the origin, oriented along the Z-axis
 preViewId     = 1;
-vSetKeyFrames = addView(vSetKeyFrames, preViewId, rigid3d, 'Points', prePoints,...
-    'Features', preFeatures.Features);
+vSetKeyFrames = addView(vSetKeyFrames, preViewId, rigidtform3d, Points=prePoints,...
+    Features=preFeatures.Features);
 
 % Add the second key frame
 currViewId    = 2;
-vSetKeyFrames = addView(vSetKeyFrames, currViewId, relPose, 'Points', currPoints,...
-    'Features', currFeatures.Features);
+vSetKeyFrames = addView(vSetKeyFrames, currViewId, relPose, Points=currPoints,...
+    Features=currFeatures.Features);
 
 % Add connection between the first and the second key frame
-vSetKeyFrames = addConnection(vSetKeyFrames, preViewId, currViewId, relPose, 'Matches', indexPairs);
+vSetKeyFrames = addConnection(vSetKeyFrames, preViewId, currViewId, relPose, Matches=indexPairs);
 
 % Add 3-D map points
 [mapPointSet, newPointIdx] = addWorldPoints(mapPointSet, xyzWorldPoints);
@@ -139,14 +135,17 @@ mapPointSet   = addCorrespondences(mapPointSet, currViewId, newPointIdx, indexPa
 
 %% Refine and Visualize the Initial Reconstruction
 
-[vSetKeyFrames, mapPointSet, directionAndDepth] = helperGlobalBundleAdjustment(...
-    vSetKeyFrames, mapPointSet, directionAndDepth, intrinsics, relPose);
+[vSetKeyFrames, mapPointSet] = helperGlobalBundleAdjustment(...
+    vSetKeyFrames, mapPointSet, intrinsics, relPose);
 
 % Visualize matched features in the current frame
 featurePlot   = helperVisualizeMatchedFeatures(currI, currPoints(indexPairs(:,2)));
 
 % Visualize initial map points and camera trajectory
-mapPlot       = helperVisualizeSceneAndTrajectory(vSetKeyFrames, mapPointSet);
+xLim = [-0.3, 0.7];
+yLim = [-0.5, 0.5];
+zLim = [-0.4, 1.6];
+mapPlot       = helperVisualizeSceneAndTrajectory(vSetKeyFrames, mapPointSet, xLim, yLim, zLim);
 
 % Show legend
 showLegend(mapPlot);
@@ -154,10 +153,10 @@ showLegend(mapPlot);
 %% Initialize Place Recognition Database
 
 % Load the bag of features data created offline
-bofData         = load('bagOfFeaturesDataSLAM.mat');
+bofData         = load("bagOfFeaturesDataSLAM.mat");
 
 % Initialize the place recognition database
-loopDatabase    = invertedImageIndex(bofData.bof, "SaveFeatureLocations", false);
+loopDatabase    = invertedImageIndex(bofData.bof, SaveFeatureLocations=false);
 
 % Add features of the first two key frames to the database
 addImageFeatures(loopDatabase, preFeatures, preViewId);
@@ -200,9 +199,9 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
     
     % Track the local map and check if the current frame is a key frame
     numSkipFrames     = 15;
-    numPointsKeyFrame = 120;
+    numPointsKeyFrame = 80;
     [localKeyFrameIds, currPose, mapPointsIdx, featureIdx, isKeyFrame] = ...
-        helperTrackLocalMap(mapPointSet, directionAndDepth, vSetKeyFrames, mapPointsIdx, ...
+        helperTrackLocalMap(mapPointSet, vSetKeyFrames, mapPointsIdx, ...
         featureIdx, currPose, currFeatures, currPoints, intrinsics, scaleFactor, numLevels, ...
         isLastFrameKeyFrame, lastKeyFrameIdx, currFrameIdx, numSkipFrames, numPointsKeyFrame);
 
@@ -227,8 +226,7 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
         currPose, currFeatures, currPoints, mapPointsIdx, featureIdx, localKeyFrameIds);
     
     % Remove outlier map points that are observed in fewer than 3 key frames
-    [mapPointSet, directionAndDepth, mapPointsIdx] = helperCullRecentMapPoints( ...
-        mapPointSet, directionAndDepth, mapPointsIdx, newPointIdx);
+    mapPointSet = helperCullRecentMapPoints(mapPointSet, mapPointsIdx, newPointIdx);
     
     % Create new map points by triangulation
     minNumMatches = 20;
@@ -236,16 +234,26 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
     [mapPointSet, vSetKeyFrames, newPointIdx] = helperCreateNewMapPoints( ...
         mapPointSet, vSetKeyFrames, currKeyFrameId, intrinsics, scaleFactor, ...
         minNumMatches, minParallax);
-    
-    % Update view direction and depth
-    directionAndDepth = update(directionAndDepth, mapPointSet, ...
-        vSetKeyFrames.Views, [mapPointsIdx; newPointIdx], true);
-    
+
     % Local bundle adjustment
-    [mapPointSet, directionAndDepth, vSetKeyFrames, newPointIdx] = ...
-        helperLocalBundleAdjustment(mapPointSet, directionAndDepth, ...
-        vSetKeyFrames, currKeyFrameId, intrinsics, newPointIdx);
+    [refinedViews, dist] = connectedViews(vSetKeyFrames, currKeyFrameId, MaxDistance=2);
+    refinedKeyFrameIds = refinedViews.ViewId;
+    fixedViewIds = refinedKeyFrameIds(dist==2);
+    fixedViewIds = fixedViewIds(1:min(10, numel(fixedViewIds)));
+
+    % Refine local key frames and map points
+    [mapPointSet, vSetKeyFrames, mapPointIdx] = bundleAdjustment(...
+        mapPointSet, vSetKeyFrames, [refinedKeyFrameIds; currKeyFrameId], intrinsics, ...
+        FixedViewIDs=fixedViewIds, PointsUndistorted=true, AbsoluteTolerance=1e-7,...
+        RelativeTolerance=1e-16, Solver="preconditioned-conjugate-gradient", ...
+        MaxIteration=10);
+
+    % Update view direction and depth
+    mapPointSet = updateLimitsAndDirection(mapPointSet, mapPointIdx, vSetKeyFrames.Views);
     
+    % Update representative view
+    mapPointSet = updateRepresentativeView(mapPointSet, mapPointIdx, vSetKeyFrames.Views);
+
     % Visualize 3D world points and camera trajectory
     updatePlot(mapPlot, vSetKeyFrames, mapPointSet);
     
@@ -253,20 +261,20 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
     % Initialize the loop closure database
 
     % Check loop closure after some key frames have been created    
-    if currKeyFrameId > 100
+    if currKeyFrameId > 70
         
         % Detect possible loop closure key frame candidates
-        loopEdgeNumMatches = 40;
+        loopEdgeNumMatches = 30;
         [isDetected, validLoopCandidates] = helperCheckLoopClosure(vSetKeyFrames, currKeyFrameId, ...
             loopDatabase, currI, loopEdgeNumMatches);
         
         if isDetected 
             % Add loop closure connections
             isStereo = false;
-            [mapPointSet, vSetKeyFrames, loopClosureEdge] = helperAddLoopConnections(...
-                mapPointSet, vSetKeyFrames, validLoopCandidates, ...
-                currKeyFrameId, currFeatures, currPoints, loopEdgeNumMatches, isStereo);
-            isLoopClosed = ~isempty(loopClosureEdge);
+             [isLoopClosed, mapPointSet, vSetKeyFrames, loopClosureEdge] = ...
+                 helperAddLoopConnections(...
+                 mapPointSet, vSetKeyFrames, validLoopCandidates, ...
+                 currKeyFrameId, currFeatures, currPoints, loopEdgeNumMatches, isStereo);
         end
     end
     
@@ -292,18 +300,19 @@ end
 G = createPoseGraph(vSetKeyFrames);
 
 % Remove weak edges and keep loop closure edges
+minNumMatches = 20;
 EG = rmedge(G, find(G.Edges.Weight < minNumMatches & ...
-    ~ismember(G.Edges.EndNodes, loopClosureEdge, 'rows')));
+    ~ismember(G.Edges.EndNodes, loopClosureEdge, "rows")));
 
 % Optimize the similarity pose graph
-optimG = optimizePoseGraph(EG, 'g2o-levenberg-marquardt');
+optimG = optimizePoseGraph(EG, "g2o-levenberg-marquardt");
 optimizedPoses = optimG.Nodes(:, 1:2);
 
 % Update the view poses
 vSetKeyFramesOptim = updateView(vSetKeyFrames, optimizedPoses);
 
 % Update map points after optimizing the poses
-mapPointSet = helperUpdateGlobalMap(mapPointSet, directionAndDepth, ...
+mapPointSet = helperUpdateGlobalMap(mapPointSet, ...
     vSetKeyFrames, vSetKeyFramesOptim, optimG.Nodes.Scale);
 
 updatePlot(mapPlot, vSetKeyFrames, mapPointSet);
@@ -320,7 +329,7 @@ function [features, validPoints] = helperDetectAndExtractFeatures(Irgb, ...
     scaleFactor, numLevels, varargin)
 %helperDetectAndExtractFeatures detect and extract features
 
-numPoints   = 1500;
+numPoints   = 1000;
 
 % In this example, the images are already undistorted. In a general
 % workflow, uncomment the following code to undistort the images.
@@ -333,7 +342,7 @@ numPoints   = 1500;
 % Detect ORB features
 Igray  = im2gray(Irgb);
 
-points = detectORBFeatures(Igray, 'ScaleFactor', scaleFactor, 'NumLevels', numLevels);
+points = detectORBFeatures(Igray, ScaleFactor=scaleFactor, NumLevels=numLevels);
 
 % Select a subset of features, uniformly distributed throughout the image
 points = selectUniform(points, numPoints, size(Igray, 1:2));
@@ -346,9 +355,9 @@ end
 function [H, score, inliersIndex] = helperComputeHomography(matchedPoints1, matchedPoints2)
 %helperComputeHomography compute homography and evaluate reconstruction
 
-[H, inliersLogicalIndex] = estimateGeometricTransform2D( ...
+[H, inliersLogicalIndex] = estgeotform2d( ...
     matchedPoints1, matchedPoints2, 'similarity', ...
-    'MaxNumTrials', 5e3, 'MaxDistance', 4);
+    MaxNumTrials=1e3, MaxDistance=1, Confidence=90);
 
 inlierPoints1 = matchedPoints1(inliersLogicalIndex);
 inlierPoints2 = matchedPoints2(inliersLogicalIndex);
@@ -374,8 +383,8 @@ function [F, score, inliersIndex] = helperComputeFundamentalMatrix(matchedPoints
 %helperComputeFundamentalMatrix compute fundamental matrix and evaluate reconstruction
 
 [F, inliersLogicalIndex]   = estimateFundamentalMatrix( ...
-    matchedPoints1, matchedPoints2, 'Method','RANSAC',...
-    'NumTrials', 5e3, 'DistanceThreshold', 0.1);
+    matchedPoints1, matchedPoints2, Method="RANSAC",...
+    NumTrials=5e3, DistanceThreshold=0.1);
 
 inlierPoints1 = matchedPoints1(inliersLogicalIndex);
 inlierPoints2 = matchedPoints2(inliersLogicalIndex);
@@ -405,12 +414,8 @@ function [isValid, xyzPoints, inlierIdx] = helperTriangulateTwoFrames(...
     pose1, pose2, matchedPoints1, matchedPoints2, intrinsics, minParallax)
 %helperTriangulateTwoFrames triangulate two frames to initialize the map
 
-[R1, t1]   = cameraPoseToExtrinsics(pose1.Rotation, pose1.Translation);
-camMatrix1 = cameraMatrix(intrinsics, R1, t1);
-
-[R2, t2]   = cameraPoseToExtrinsics(pose2.Rotation, pose2.Translation);
-camMatrix2 = cameraMatrix(intrinsics, R2, t2);
-
+camMatrix1 = cameraProjection(intrinsics, pose2extr(pose1));
+camMatrix2 = cameraProjection(intrinsics, pose2extr(pose2));
 [xyzPoints, reprojectionErrors, isInFront] = triangulate(matchedPoints1, ...
     matchedPoints2, camMatrix1, camMatrix2);
 
@@ -429,35 +434,32 @@ isValid = nnz(cosAngle < cosd(minParallax) & cosAngle>0) > 20;
 end
 
 %--------------------------------------------------------------------------
-function [mapPointSet, directionAndDepth, mapPointsIdx] = helperCullRecentMapPoints(...
-        mapPointSet, directionAndDepth, mapPointsIdx, newPointIdx)
+function mapPointSet= helperCullRecentMapPoints(mapPointSet, mapPointsIdx, newPointIdx)
 %helperCullRecentMapPoints cull recently added map points
 outlierIdx    = setdiff(newPointIdx, mapPointsIdx);
 if ~isempty(outlierIdx)
     mapPointSet   = removeWorldPoints(mapPointSet, outlierIdx);
-    directionAndDepth = remove(directionAndDepth, outlierIdx);
-    mapPointsIdx  = mapPointsIdx - arrayfun(@(x) nnz(x>outlierIdx), mapPointsIdx);
 end
 end
 
 %--------------------------------------------------------------------------
-function [mapPointSet, directionAndDepth] = helperUpdateGlobalMap(...
-    mapPointSet, directionAndDepth, vSetKeyFrames, vSetKeyFramesOptim, poseScales)
+function mapPointSet = helperUpdateGlobalMap(...
+    mapPointSet, vSetKeyFrames, vSetKeyFramesOptim, poseScales)
 %helperUpdateGlobalMap update map points after pose graph optimization
 posesOld     = vSetKeyFrames.Views.AbsolutePose;
 posesNew     = vSetKeyFramesOptim.Views.AbsolutePose;
 positionsOld = mapPointSet.WorldPoints;
 positionsNew = positionsOld;
-indices = 1:mapPointSet.Count;
+indices     = 1:mapPointSet.Count;
 
 % Update world location of each map point based on the new absolute pose of 
-% the corresponding major view and the associated scales
-for i = 1: mapPointSet.Count
-    majorViewIds = directionAndDepth.MajorViewId(i);
-    poseNew = posesNew(majorViewIds).T;
-    poseNew(1:3, 1:3) = poseNew(1:3, 1:3)*poseScales(majorViewIds);
-    tform = posesOld(majorViewIds).T \ poseNew;
-    positionsNew(i, :) = positionsOld(i, :) * tform(1:3,1:3) + tform(4, 1:3);
+% the corresponding major view
+for i = indices
+    majorViewIds = mapPointSet.RepresentativeViewId(i);
+    poseNew = posesNew(majorViewIds).A;
+    poseNew(1:3, 1:3) = poseNew(1:3, 1:3) * poseScales(majorViewIds);
+    tform = affinetform3d(poseNew/posesOld(majorViewIds).A);
+    positionsNew(i, :) = transformPointsForward(tform, positionsOld(i, :));
 end
 mapPointSet = updateWorldPoints(mapPointSet, indices, positionsNew);
 end

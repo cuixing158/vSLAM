@@ -1,36 +1,25 @@
 %% 使用曾总的图像做vSLAM
-parkingLotRoot = "E:\AllDataAndModels\parkingLotImages";%"H:\dataSets\vSLAM\parkingLotImages";%"E:\AllDataAndModels\underParkingLotImages20220606";%
+parkingLotRoot = "E:\AllDataAndModels\underParkingLotImages20220606";%"H:\dataSets\vSLAM\parkingLotImages";%"E:\AllDataAndModels\underParkingLotImages20220606";%
 validIndexStart = 4;
 imds = imageDatastore(parkingLotRoot);
 imds = subset(imds,validIndexStart:length(imds.Files));
 gTruthData = readtable(fullfile(parkingLotRoot,"simUE_eular.csv"));
 gTruthData = movevars(gTruthData,"image","After","Time");
 gTruth = helperGetSensorGroundTruth(gTruthData);
-initPose = gTruth(1);
 gTruth = gTruth(validIndexStart:end,:);
 
 % 间隔取帧
-imds = subset(imds,1:1:length(imds.Files));
-gTruth = gTruth(1:1:length(gTruth));
-
-%% 我们摄像头停车场视频
-% videoReader = VideoReader('E:\AllDataAndModels\videos20220519\WIN_20220519_11_16_10_Pro.mp4');
-% videoPlayer = vision.VideoPlayer;
-% while hasFrame(videoReader)
-%    frame = readFrame(videoReader);
-%    frame = imrotate(frame,180);
-%    step(videoPlayer,frame);
-% end
-% videoPlayer.release()
+imds = subset(imds,1:2:length(imds.Files));
+gTruth = gTruth(1:2:length(gTruth));
 
 %% Camera intrinsics
-% focalLength    = [1046, 1046];  % specified in units of pixels，曾总提供的
-% principalPoint = [1920/2,1080/2];  % in pixels [x, y]
-% imageSize      = [1080, 1920]; % in pixels [mrows, ncols]
+focalLength    = [1046, 1046];  % specified in units of pixels，曾总提供的
+principalPoint = [1920/2,1080/2];  % in pixels [x, y]
+imageSize      = [1080, 1920]; % in pixels [mrows, ncols]
 
-focalLength    = [700, 700];  % specified in units of pixels,demo 自带的
-principalPoint = [ 600,180];  % in pixels [x, y]
-imageSize      = [370, 1230]; % in pixels [mrows, ncols]
+% focalLength    = [700, 700];  % specified in units of pixels,demo 自带的
+% principalPoint = [ 600,180];  % in pixels [x, y]
+% imageSize      = [370, 1230]; % in pixels [mrows, ncols]
 intrinsics     = cameraIntrinsics(focalLength, principalPoint, imageSize);
 
 %% 主模块
@@ -62,11 +51,11 @@ while ~isMapInitialized && currFrameIdx < numel(imds.Files)
     currFrameIdx = currFrameIdx + 1;
     
     % Find putative feature matches
-    indexPairs = matchFeatures(preFeatures, currFeatures, 'Unique', true, ...
-        'MaxRatio', 0.7, 'MatchThreshold', 40);
+    indexPairs = matchFeatures(preFeatures, currFeatures, Unique=true, ...
+        MaxRatio=0.7, MatchThreshold=40);
 
     % If not enough matches are found, check the next frame
-    minMatches = 10;
+    minMatches = 50;
     if size(indexPairs, 1) < minMatches 
         continue
     end
@@ -95,7 +84,7 @@ while ~isMapInitialized && currFrameIdx < numel(imds.Files)
     end
     
     % Triangulate two views to obtain 3-D map points
-    minParallax = 0.2;
+    minParallax = 1;
     [isValid, xyzWorldPoints, inlierTriangulationIdx] = helperTriangulateTwoFrames(...
         rigidtform3d, relPose, inlierPrePoints, inlierCurrPoints, intrinsics, minParallax);
     
@@ -113,9 +102,9 @@ end % End of map initialization loop
 
 if isMapInitialized
     % Show matched features
-%     hfeature = figure;
-%     showMatchedFeatures(firstI, currI, prePoints(indexPairs(:,1)), ...
-%         currPoints(indexPairs(:, 2)), 'montage', 'Parent', gca(hfeature));
+    hfeature = figure;
+    showMatchedFeatures(firstI, currI, prePoints(indexPairs(:,1)), ...
+        currPoints(indexPairs(:, 2)), 'montage', 'Parent', gca(hfeature));
 else
     error('Unable to initialize the map.')
 end
@@ -171,19 +160,17 @@ showLegend(mapPlot);
 %% Initialize Place Recognition Database
 
 % Load the bag of features data created offline
-load("bagOfFeaturesDataSLAM.mat");
-bofData = bof;
-% placeRecDatabase = fullfile(parkingLotRoot,"bagOfFeaturesDataSLAM.mat");
-% if isfile(placeRecDatabase)
-%   load(placeRecDatabase);
-% else
-%     bofData = bagOfFeatures(imds,CustomExtractor=@helperORBFeatureExtractorFunction,...
-%     TreeProperties=[3,10],StrongestFeatures=1);
-%     save(placeRecDatabase,'bofData');
-% end
+placeRecDatabase = fullfile(parkingLotRoot,"bagOfFeaturesDataSLAM.mat");
+if isfile(placeRecDatabase)
+  load(placeRecDatabase);
+else
+    bofData = bagOfFeatures(imds,CustomExtractor=@helperORBFeatureExtractorFunction,...
+    TreeProperties=[3,10],StrongestFeatures=1);
+    save(placeRecDatabase,'bofData');
+end
 
 % Initialize the place recognition database
-loopDatabase    = invertedImageIndex(bofData, "SaveFeatureLocations", false);
+loopDatabase    = invertedImageIndex(bofData, SaveFeatureLocations= false);
 
 % Add features of the first two key frames to the database
 addImageFeatures(loopDatabase, preFeatures, preViewId);
@@ -224,7 +211,7 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
     % Track the local map and check if the current frame is a key
     % frame，跟踪局部地图以获取更多的对应点
     numSkipFrames     = 15;
-    numPointsKeyFrame = 120;
+    numPointsKeyFrame = 80;
     [localKeyFrameIds, currPose, mapPointsIdx, featureIdx, isKeyFrame] = ...
         helperTrackLocalMap(mapPointSet, vSetKeyFrames, mapPointsIdx, ...
         featureIdx, currPose, currFeatures, currPoints, intrinsics, scaleFactor, numLevels, ...
@@ -292,10 +279,10 @@ while ~isLoopClosed && currFrameIdx < numel(imds.Files)
     % Initialize the loop closure database
 
     % Check loop closure after some key frames have been created    
-    if currKeyFrameId > 100
+    if currKeyFrameId > 70
         
         % Detect possible loop closure key frame candidates
-        loopEdgeNumMatches = 40;
+        loopEdgeNumMatches = 30;
         [isDetected, validLoopCandidates] = helperCheckLoopClosure(vSetKeyFrames, currKeyFrameId, ...
             loopDatabase, currI, loopEdgeNumMatches);
         
@@ -361,7 +348,7 @@ function [features, validPoints] = helperDetectAndExtractFeatures(Irgb, ...
     scaleFactor, numLevels, varargin)
 %helperDetectAndExtractFeatures detect and extract features
 
-numPoints   = 1500;
+numPoints   = 1000;
 
 % In this example, the images are already undistorted. In a general
 % workflow, uncomment the following code to undistort the images.
@@ -374,7 +361,7 @@ numPoints   = 1500;
 % Detect ORB features
 Igray  = im2gray(Irgb);
 
-points = detectORBFeatures(Igray, 'ScaleFactor', scaleFactor, 'NumLevels', numLevels);
+points = detectORBFeatures(Igray, ScaleFactor=scaleFactor, NumLevels=numLevels);
 
 % Select a subset of features, uniformly distributed throughout the image
 points = selectUniform(points, numPoints, size(Igray, 1:2));
@@ -388,8 +375,8 @@ function [F, score, inliersIndex] = helperComputeFundamentalMatrix(matchedPoints
 %helperComputeFundamentalMatrix compute fundamental matrix and evaluate reconstruction
 
 [F, inliersLogicalIndex]   = estimateFundamentalMatrix( ...
-    matchedPoints1, matchedPoints2, 'Method','RANSAC',...
-    'NumTrials', 5e3, 'DistanceThreshold', 0.1);
+    matchedPoints1, matchedPoints2, Method="RANSAC",...
+    NumTrials=5e3, DistanceThreshold=0.1);
 
 inlierPoints1 = matchedPoints1(inliersLogicalIndex);
 inlierPoints2 = matchedPoints2(inliersLogicalIndex);
