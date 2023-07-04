@@ -77,8 +77,8 @@ R_{31}  & R_{32}  & R_{33} & t_z\\
 其余T2,T3类推。则$T3=T23\ast T12\ast T1$，其中T12有如下形式：<br>
 
 $$T12=\left\lbrack \begin{array}{c}
-R_2'\ast R_1 & 0\\
-R_2'\ast (t1-t2)   & 1
+R_2'\ast R_1 & R_2'\ast (t1-t2)\\
+ 0  & 1
 \end{array}\right\rbrack$$
 
 其余相对变换类推，证明见文后的reference4。
@@ -96,10 +96,10 @@ R_2'\ast (t1-t2)   & 1
 
 ## 姿态绘图
 
-若提供一个绝对姿态$T(R,t)$的对象rigid3d，就可以绘制一个**确定的**相机姿态。注意matlab中规定相机默认姿态如下，符合我们通用想法：<br>
+若提供一个绝对姿态$T(R,t)$的对象rigidtform3d，就可以绘制一个**确定的**相机姿态。注意matlab中规定相机默认姿态如下，符合我们通用想法：<br>
 
 ```matlab
-p1 = rigid3d(); % 默认构造函数，其中R=[1,0,0;0,1,0;0,0,1], t = [0,0,0];
+p1 = rigidtform3d(); % 默认构造函数，其中R=[1,0,0;0,1,0;0,0,1], t = [0,0,0];
 cam = plotCamera(AbsolutePose=p1,Opacity=0,AxesVisible=true);
 grid on; xlabel('x');ylabel('y');zlabel('z')
 ```
