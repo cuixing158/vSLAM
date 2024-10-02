@@ -73,12 +73,12 @@ function [undistortImg,mapX,mapY] = undistortImgFast(oriImg,K,cameraData,outputV
 % See also: None
 
 % Author:                          cuixingxing
-% Email:                           xingxing.cui@long-horn.com
+% Email:                           cuixingxing150@gmail.com
 % Created:                         24-Jun-2022 14:02:23
 % Version history revision notes:
 %                                  None
 % Implementation In Matlab R2022a
-% Copyright © 2022 long-horn.All Rights Reserved.
+% Copyright © 2022 TheMatrix.All Rights Reserved.
 %
 arguments
     oriImg

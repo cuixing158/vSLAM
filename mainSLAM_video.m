@@ -1,5 +1,5 @@
 %% 使用王家才的地下停车场视频数据集做vSLAM
-videoPath = "E:\long_horn_newTech\from_wjc\地下车库\";
+videoPath = "your_video_folder";
 fs = fileDatastore(videoPath,"ReadFcn",@VideoReader,...
     ReadMode="file",FileExtensions=".mp4");
 

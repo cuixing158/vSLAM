@@ -6,7 +6,7 @@
 
 2022.11.17 修改为通用习惯模式表达，TMW官方也已更新为通用习惯方式
 
->matlab中众多工具箱都有涉及到旋转矩阵，欧拉角，四元数等的转换，目前最新版本2022b中各个工具箱（CV,Automated Driving,Navigation,Robotics System,Sensor Fusion and Tracking等）逐渐趋于完全统一，这里以**通用习惯（pre-multiply）**进行表述一些常用的操作,对官方文档进行进一步的**澄清扩充**，以便方便各位同事有效使用，更多详细延申看文后reference。
+>matlab中众多工具箱都有涉及到旋转矩阵，欧拉角，四元数等的转换，目前最新版本2022b中各个工具箱（CV,Automated Driving,Navigation,Robotics System,Sensor Fusion and Tracking等）逐渐趋于完全统一，这里以**通用习惯（pre-multiply）**进行表述一些常用的操作,对官方文档进行进一步的**澄清扩充**。
 
 本文默认都是以右手坐标系，欧拉角以[Tait–Bryan angles,extrinsic rotation](https://en.wikipedia.org/wiki/Euler_angles#Conventions_by_extrinsic_rotations)/[point rotation](https://ww2.mathworks.cn/help/driving/ref/quaternion.html?s_tid=doc_ta#mw_9c239f4e-9f4d-4cc5-9f00-ed1f59f90c4f)，点坐标以列向量形式在旋转矩阵右侧相乘的惯例进行，除非特别说明。根据`rotx`函数文档，点绕x,y,z坐标轴旋转对应的旋转矩阵分别如下：<br>
 <p align="left">
@@ -31,7 +31,7 @@ z_1
 
 若空间点$p1(x_1,y_1,z_1)$绕多个轴旋转，比如先绕x轴旋转$\alpha$，然后绕y轴旋转$\beta$,最后绕z轴旋转$\gamma$得到$p2(x_2,y_2,z_2)$,则公式应为：$p2 = R_z(\gamma)*R_y(\beta)*R_x(\alpha)*p1$，注意它们顺序**依次向左写，不能搞反！**
 
-**由于曾总提供的姿态数据是以欧拉角形式给出的，而在绘制三维姿态朝向的时候要借助使用rididtform3d这个类函数对象来呈现空间中的相机姿态（其他语言类似），以便验证我们的理解是否正确，而这个函数对象包含旋转矩阵部分，需要先把欧拉角转换为旋转矩阵，再构建rigidtform3d姿态绘图显示，故下面主要澄清欧拉角转换为旋转矩阵eul2rotm，姿态rigidtform3d两个函数作说明。**
+**由于仿真提供的姿态数据是以欧拉角形式给出的，而在绘制三维姿态朝向的时候要借助使用rididtform3d这个类函数对象来呈现空间中的相机姿态（其他语言类似），以便验证我们的理解是否正确，而这个函数对象包含旋转矩阵部分，需要先把欧拉角转换为旋转矩阵，再构建rigidtform3d姿态绘图显示，故下面主要澄清欧拉角转换为旋转矩阵eul2rotm，姿态rigidtform3d两个函数作说明。**
 
 ## eul2rotm函数
 
@@ -109,7 +109,7 @@ grid on; xlabel('x');ylabel('y');zlabel('z')
 </p>
 
 默认初始姿态为世界坐标系姿态，即**相机物理坐标系与世界坐标系重合！**
-下面3个示例依次循序渐进，逐步趋向曾总提供的表格数据集，达到“既想即所得”效果，只**讨论相机如何通过欧拉角变换朝向，位置均为世界坐标系原点为准！**
+下面3个示例依次循序渐进，逐步趋向仿真提供的表格数据集，达到“既想即所得”效果，只**讨论相机如何通过欧拉角变换朝向，位置均为世界坐标系原点为准！**
 
 - Example1
 若只提供一组欧拉角$(0,0,-\pi)$，指定顺序为'XYZ',则从Z轴正方向看，相机顺时针旋转$\pi$弧度(180°)，则相机姿态如下所示：
@@ -148,7 +148,7 @@ grid on; xlabel('x');ylabel('y');zlabel('z');axis equal;
 图像完全符合我们预期,但**注意相机物理坐标系（黑色轴）轴的倾斜方向。**
 
 - Example3
-以上2个示例前提条件是相机初始姿态方向均为世界坐标系默认朝向一致，但这次以曾总数据初始相机姿态朝向为准：相机物理坐标系$Z_c$轴朝向世界坐标系x轴,$Y_c$朝向世界坐标系-z轴，$X_c$朝向世界坐标系-y轴。绘制的初始姿态应该为：
+以上2个示例前提条件是相机初始姿态方向均为世界坐标系默认朝向一致，但这次以仿真数据初始相机姿态朝向为准：相机物理坐标系$Z_c$轴朝向世界坐标系x轴,$Y_c$朝向世界坐标系-z轴，$X_c$朝向世界坐标系-y轴。绘制的初始姿态应该为：
 
 ```matlab
 e3 = [0,pi/2,-pi/2];
@@ -156,27 +156,27 @@ R3 = eul2rotm(e3,'XYZ');% or use R2 = rotx(a)*roty(b)*rotz(c)，注意输入参�
 t3=[0,0,0];
 P3 = rigidtform3d(R3,t3);
 cam = plotCamera(AbsolutePose=P3,Opacity=0,AxesVisible=true);
-grid on; xlabel('x');ylabel('y');zlabel('z');axis equal;title('曾总数据集相机初始姿态基准')
+grid on; xlabel('x');ylabel('y');zlabel('z');axis equal;title('仿真数据集相机初始姿态基准')
 ```
 
 <p align="center">
   <img src="images/cameraP_init.jpg" />
 </p>
 
-图像完全符合我们预期,相机初始的物理坐标系**曾总基准（黑色轴）方向。**
+图像完全符合我们预期,相机初始的物理坐标系**基准（黑色轴）方向。**
 
-若依旧提供一组欧拉角$(0,-\pi/6,-\pi)$，指定顺序依旧为'XYZ',但**注意相机初始姿态方向为上述曾总的基准方向**，则从z轴正方向看，相机先顺时针旋转$\pi$弧度(180°)，然后从y轴正方向看，相机顺时针旋转$pi/6$弧度(30°),则相机姿态如下所示：
+若依旧提供一组欧拉角$(0,-\pi/6,-\pi)$，指定顺序依旧为'XYZ',但**注意相机初始姿态方向为上述的基准方向**，则从z轴正方向看，相机先顺时针旋转$\pi$弧度(180°)，然后从y轴正方向看，相机顺时针旋转$pi/6$弧度(30°),则相机姿态如下所示：
 
 ```matlab
 e4 = [0,-pi/6,-pi]; % 数据表格3个欧拉角[roll,pitch,yaw]，弧度
-e_base = [0,pi/2,-pi/2];% 上述曾总的相机物理坐标系基准方向
+e_base = [0,pi/2,-pi/2];% 上述仿真的相机物理坐标系基准方向
 R4 = eul2rotm(e4,'XYZ');% or use R4 = rotx(a)*roty(b)*rotz(c)，注意输入参数为角度,先绕Z，其次绕Y，最后绕X轴！
 R_base = eul2rotm(e_base,'XYZ');
 t4=[0,0,0];
 RotationM_base = R4*R_base; % 通用旋转矩阵在右边相乘形式
 P4 = rigidtform3d(RotationM_base,t4);
 cam = plotCamera(AbsolutePose=P4,Opacity=0,AxesVisible=true);
-grid on; xlabel('x');ylabel('y');zlabel('z');axis equal;title('曾总数据集相机姿态绘图')
+grid on; xlabel('x');ylabel('y');zlabel('z');axis equal;title('仿真数据集相机姿态绘图')
 ```
 
 <p align="center">
